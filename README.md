@@ -1,0 +1,2 @@
+# arzanopoly
+app segna punti
