@@ -68,7 +68,7 @@
     #dice-sum-display { text-align: center; font-size: 1.1rem; color: #ffeb3b; font-weight: bold; margin-top: 5px; }
     #reader { width: 100%; margin-top: 10px; border-radius: 8px; overflow: hidden; background: #000; }
 
-    /* POPUP DETTAGLI CARTA QR/NFC */
+    /* POPUP DINAMICO CARTA/PROPRIETA' */
     .modal-overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0,0,0,0.85); display: none; justify-content: center;
@@ -87,12 +87,13 @@
 
   <h1>🏦 Banco Arzanopoly</h1>
 
-  <!-- Popup Dettagli Carta Scansionata -->
+  <!-- Popup Dinamico Azioni Carta Scansionata -->
   <div id="qr-modal" class="modal-overlay">
     <div class="card-modal" id="qr-modal-card">
       <div class="card-title" id="modal-card-title">Atto / Carta</div>
       <div class="card-body" id="modal-card-body">Caricamento dettagli...</div>
-      <button onclick="closeCardModal()" style="background:#607d8b;">Chiudi</button>
+      <div id="modal-actions" style="display:flex; flex-direction:column; gap:8px;"></div>
+      <button onclick="closeCardModal()" style="background:#607d8b; margin-top:8px;">Chiudi</button>
     </div>
   </div>
 
@@ -151,7 +152,7 @@
 
   <div class="card">
     <button class="qr-btn" onclick="startScanner()">📷 Scansiona Carta / Atto (QR)</button>
-    <button class="nfc-btn" onclick="startNFCScanner()">📡 Leggi Tag NFC</button>
+    <button class="nfc-btn" onclick="startNFCScanner()">📡 Leggi Tag NFC (Proprietà/Giocatore)</button>
     <div id="reader" style="display: none;"></div>
 
     <div style="display:flex; gap:10px;">
@@ -416,6 +417,13 @@
       if (player.properties) player.properties.forEach(prop => { if (isStationProperty(prop.name)) count++; });
       return count;
     }
+    function playerOwnsFullColorGroup(player, propertyName) {
+      let targetGroup = null;
+      colorGroups.forEach(group => { if (group.some(p => p.toLowerCase() === propertyName.toLowerCase())) targetGroup = group; });
+      if (!targetGroup) return false;
+      let ownedNames = player.properties.map(pr => pr.name.toLowerCase());
+      return targetGroup.every(propInGroup => ownedNames.includes(propInGroup.toLowerCase()));
+    }
 
     function loadGameState() {
       try {
@@ -467,14 +475,6 @@
         calcSelect.innerHTML += `<option value="${idx}">${labelIcon} ${p.name} ${detailStr}</option>`;
         assignSelect.innerHTML += `<option value="${idx}">${labelIcon} ${p.name} ${detailStr}</option>`;
       });
-    }
-
-    function playerOwnsFullColorGroup(player, propertyName) {
-      let targetGroup = null;
-      colorGroups.forEach(group => { if (group.some(p => p.toLowerCase() === propertyName.toLowerCase())) targetGroup = group; });
-      if (!targetGroup) return false;
-      let ownedNames = player.properties.map(pr => pr.name.toLowerCase());
-      return targetGroup.every(propInGroup => ownedNames.includes(propInGroup.toLowerCase()));
     }
 
     function updateUI() {
@@ -1091,12 +1091,10 @@
     function onScanSuccess(decodedText) {
       stopScanner();
       soundSuccess();
-      showCardModal(decodedText);
+      processScannedCard(decodedText);
     }
 
-    function onScanFailure(error) {
-      // Ignora la ricerca continua del QR
-    }
+    function onScanFailure(error) {}
 
     /* GESTIONE LETTORE NFC NATIVO (WEB NFC API) */
     async function startNFCScanner() {
@@ -1119,7 +1117,7 @@
             }
 
             if (!scannedData) scannedData = `Tag ID: ${serialNumber}`;
-            showCardModal(scannedData);
+            processScannedCard(scannedData);
           });
         } catch (error) {
           soundError();
@@ -1127,11 +1125,150 @@
         }
       } else {
         soundError();
-        alert("Il tuo telefono o il browser (Chrome Android necessario) non supporta la lettura Web NFC. Assicurati che l'NFC sia attivo nelle impostazioni del telefono.");
+        alert("Il tuo telefono o il browser (Chrome Android) non supporta la lettura Web NFC.");
       }
     }
 
-    /* MODALITA' POS CONTACTLESS AUTOMATICA */
+    /* PROCESSO AUTOMATICO SCANSIONE CARTA (PROPRIETA' / GIOCATORE) */
+    function processScannedCard(scannedText) {
+      let cleanText = scannedText.trim();
+      let foundProp = propertiesDB.find(p => p.name.toLowerCase() === cleanText.toLowerCase());
+      let foundPlayer = players.find(p => p.name.toLowerCase() === cleanText.toLowerCase());
+
+      if (foundPlayer) {
+        // Se scansiona la carta di un giocatore, selezionalo come attivo
+        let pIndex = players.indexOf(foundPlayer);
+        document.getElementById('quick-player').value = pIndex;
+        soundSuccess();
+        logAction(`👤 <strong>NFC Giocatore:</strong> Selezionato ${foundPlayer.name}`);
+        alert(`Giocatore attivo impostato su: ${foundPlayer.name}`);
+        return;
+      }
+
+      if (foundProp) {
+        // Cerca se la proprietà ha già un proprietario
+        let owner = null, propObj = null;
+        let ownerIndex = -1;
+        players.forEach((p, pIdx) => {
+          if (p.properties) {
+            p.properties.forEach(pr => {
+              if (pr.name.toLowerCase() === foundProp.name.toLowerCase()) {
+                owner = p;
+                ownerIndex = pIdx;
+                propObj = pr;
+              }
+            });
+          }
+        });
+
+        let activePlayerIdx = document.getElementById('quick-player').value;
+        let activePlayer = activePlayerIdx !== "" ? players[activePlayerIdx] : null;
+
+        showInteractiveCardModal(foundProp, owner, ownerIndex, propObj, activePlayer);
+      } else {
+        // Carta generica o QR di imprevisti/probabilità
+        showGenericCardModal(cleanText);
+      }
+    }
+
+    function showInteractiveCardModal(prop, owner, ownerIndex, propObj, activePlayer) {
+      const modal = document.getElementById('qr-modal');
+      const titleEl = document.getElementById('modal-card-title');
+      const bodyEl = document.getElementById('modal-card-body');
+      const actionsEl = document.getElementById('modal-actions');
+
+      titleEl.innerText = prop.name;
+      titleEl.style.color = colorGroupColors[prop.name] || '#ffeb3b';
+
+      let ownerText = owner ? `<strong>Proprietario:</strong> ${owner.name}` : `<span style="color:#4caf50;">Disponibile (Non acquistata)</span>`;
+      let detailsHtml = `
+        <strong>Tipo:</strong> ${isStationProperty(prop.name) ? 'Stazione / Bus' : 'Terreno'}<br>
+        <strong>Prezzo d'acquisto:</strong> €A ${prop.price}<br>
+        ${ownerText}
+      `;
+      bodyEl.innerHTML = detailsHtml;
+      actionsEl.innerHTML = '';
+
+      if (!owner) {
+        // PROPRIETA' LIBERA -> OFFERTE ACQUISTO O ASTA
+        if (activePlayer) {
+          actionsEl.innerHTML += `<button onclick="buyScannedProperty('${prop.name}', ${prop.price})" style="background:#4caf50;">Acquista (${activePlayer.name} - €A ${prop.price})</button>`;
+        }
+        actionsEl.innerHTML += `<button onclick="startAuctionFromScan('${prop.name}')" style="background:#ff9800; color:#000;">Metti all'Asta 🔨</button>`;
+      } else if (activePlayer && owner.name === activePlayer.name) {
+        actionsEl.innerHTML += `<div style="text-align:center; color:#00bcd4; font-weight:bold; padding:8px;">Questa proprietà è tua!</div>`;
+      } else if (activePlayer) {
+        // PROPRIETA' DI ALTRI -> CALCOLO AUTOMATICO AFFITTO E POS
+        let rent = calculateAutoRent(prop.name, owner, propObj);
+        bodyEl.innerHTML += `<br><br><div style="background:#2a2a2a; padding:8px; border-radius:6px; text-align:center;">
+          Affitto dovuto: <strong style="color:#ffeb3b; font-size:1.2rem;">€A ${rent}</strong>
+        </div>`;
+        actionsEl.innerHTML += `<button onclick="payRentViaPOS(${activePlayerIdx}, ${ownerIndex}, ${rent}, '${prop.name}')" style="background:#2196f3;">Paga Affitto con POS 📡</button>`;
+      }
+
+      logAction(`📷 <strong>Letto Carta:</strong> ${prop.name}`);
+      modal.style.display = 'flex';
+    }
+
+    function showGenericCardModal(text) {
+      const modal = document.getElementById('qr-modal');
+      document.getElementById('modal-card-title').innerText = "Carta Scansionata";
+      document.getElementById('modal-card-body').innerHTML = `<strong>Contenuto:</strong><br>${text}`;
+      document.getElementById('modal-actions').innerHTML = '';
+      modal.style.display = 'flex';
+      logAction(`📷 <strong>Scansione:</strong> ${text}`);
+    }
+
+    function buyScannedProperty(propName, price) {
+      let activePlayerIdx = document.getElementById('quick-player').value;
+      if (activePlayerIdx === "") return alert("Seleziona prima un giocatore attivo!");
+      let player = players[activePlayerIdx];
+
+      if (player.balance < price) {
+        alert("Fondi insufficienti! Parte l'asta automatica.");
+        closeCardModal();
+        triggerAuctionForProperty(propName, price);
+        return;
+      }
+
+      player.balance -= price;
+      player.properties.push({ name: propName, mortgaged: false, houses: 0 });
+      soundSuccess();
+      logAction(`🏷️ <strong>${player.name}</strong> acquista <em>${propName}</em> tramite scansione per <strong>€A ${price}</strong>.`);
+      updateUI();
+      closeCardModal();
+      alert(`Acquisto completato per ${player.name}!`);
+    }
+
+    function startAuctionFromScan(propName) {
+      closeCardModal();
+      triggerAuctionForProperty(propName);
+    }
+
+    function payRentViaPOS(tenantIdx, ownerIdx, rentAmount, propName) {
+      let tenant = players[tenantIdx];
+      let owner = players[ownerIdx];
+
+      if (tenant.balance < rentAmount) {
+        soundError();
+        return alert(`${tenant.name} non ha abbastanza fondi per pagare l'affitto di €A ${rentAmount}!`);
+      }
+
+      tenant.balance -= rentAmount;
+      owner.balance += rentAmount;
+
+      soundSuccess();
+      logAction(`💳 <strong>POS Contactless:</strong> <strong>${tenant.name}</strong> ha pagato <strong>€A ${rentAmount}</strong> a <strong>${owner.name}</strong> per l'affitto di <em>${propName}</em>.`);
+      updateUI();
+      closeCardModal();
+      alert(`Pagamento POS riuscito!\n€A ${rentAmount} trasferiti da ${tenant.name} a ${owner.name}.`);
+    }
+
+    function closeCardModal() {
+      document.getElementById('qr-modal').style.display = 'none';
+    }
+
+    /* MODALITA' POS CONTACTLESS MANUALE DAL CALCOLATORE */
     async function startNFC_POS_Payment(amount, ownerIdx, reasonText) {
       if ('NDEFReader' in window) {
         try {
@@ -1143,30 +1280,23 @@
           ndef.addEventListener("reading", ({ message, serialNumber }) => {
             let textDecoder = new TextDecoder();
             let scannedText = "";
-
             for (const record of message.records) {
-              if (record.recordType === "text") {
-                scannedText = textDecoder.decode(record.data);
-              }
+              if (record.recordType === "text") scannedText = textDecoder.decode(record.data);
             }
             if (!scannedText) scannedText = serialNumber;
 
             let tenantIdx = players.findIndex(p => p.name.toLowerCase() === scannedText.toLowerCase().trim());
-
             if (tenantIdx !== -1) {
               let tenant = players[tenantIdx];
               let owner = players[ownerIdx];
 
               if (tenantIdx === parseInt(ownerIdx)) {
                 soundError();
-                alert("Il proprietario non può pagare l'affitto a se stesso!");
-                return;
+                return alert("Il proprietario non può pagare l'affitto a se stesso!");
               }
-
               if (tenant.balance < amount) {
                 soundError();
-                alert(`Fondi insufficienti per ${tenant.name}! Saldo attuale: €A ${tenant.balance}`);
-                return;
+                return alert(`Fondi insufficienti per ${tenant.name}! Saldo: €A ${tenant.balance}`);
               }
 
               tenant.balance -= amount;
@@ -1178,7 +1308,7 @@
               alert(`Pagamento POS riuscito!\n€A ${amount} pagati da ${tenant.name} a ${owner.name}.`);
             } else {
               soundError();
-              alert(`Carta NFC non riconosciuta come giocatore: "${scannedText}"`);
+              alert(`Carta NFC non riconosciuta: "${scannedText}"`);
             }
           });
         } catch (error) {
@@ -1186,7 +1316,7 @@
           alert("Errore POS NFC: " + error);
         }
       } else {
-        alert("NFC non supportato su questo dispositivo o browser (usa Chrome su Android).");
+        alert("NFC non supportato su questo browser (usa Chrome su Android).");
       }
     }
 
@@ -1196,41 +1326,10 @@
       let propSelect = document.getElementById('calc-property');
       let propName = propSelect.selectedIndex > 0 ? propSelect.options[propSelect.selectedIndex].text : "Affitto";
 
-      if (ownerIdx === "") return alert("Seleziona il proprietario che deve ricevere il pagamento!");
+      if (ownerIndexCheck = ownerIdx === "") return alert("Seleziona il proprietario che deve ricevere il pagamento!");
       if (isNaN(rentAmount) || rentAmount <= 0) return alert("Importo non valido!");
 
       startNFC_POS_Payment(rentAmount, ownerIdx, `Affitto casella: ${propName}`);
-    }
-
-    function showCardModal(qrContent) {
-      const modal = document.getElementById('qr-modal');
-      const titleEl = document.getElementById('modal-card-title');
-      const bodyEl = document.getElementById('modal-card-body');
-
-      let foundProp = propertiesDB.find(p => p.name.toLowerCase() === qrContent.toLowerCase().trim());
-
-      if (foundProp) {
-        titleEl.innerText = foundProp.name;
-        titleEl.style.color = colorGroupColors[foundProp.name] || '#ffeb3b';
-        bodyEl.innerHTML = `
-          <strong>Tipo:</strong> ${isStationProperty(foundProp.name) ? 'Stazione / Bus' : 'Terreno'}<br>
-          <strong>Prezzo d'acquisto:</strong> €A ${foundProp.price}<br>
-          ${foundProp.houseCost ? `<strong>Costo Casa/Albergo:</strong> €A ${foundProp.houseCost}<br>` : ''}
-          <strong>Affitto Base:</strong> €A ${foundProp.base}<br>
-          <strong>Ipoteca:</strong> €A ${foundProp.mortgage || Math.floor(foundProp.price / 2)}
-        `;
-      } else {
-        titleEl.innerText = "Scheda Scansionata";
-        titleEl.style.color = "#ffeb3b";
-        bodyEl.innerHTML = `<strong>Contenuto Tag / QR:</strong><br>${qrContent}`;
-      }
-
-      logAction(`📷 <strong>Letto Tag / QR:</strong> ${qrContent}`);
-      modal.style.display = 'flex';
-    }
-
-    function closeCardModal() {
-      document.getElementById('qr-modal').style.display = 'none';
     }
   </script>
 </body>
