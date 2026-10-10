@@ -205,12 +205,13 @@
         <select id="calc-tenant"></select>
       </div>
       <div style="flex:1;">
-        <label>Proprietario:</label>
+        <label>Proprietario (Chi riceve):</label>
         <select id="calc-owner"></select>
       </div>
     </div>
 
-    <button class="house-btn" onclick="applyCalculatedRent()">Paga Affitto</button>
+    <button class="house-btn" onclick="applyCalculatedRent()">Paga Affitto (Manuale)</button>
+    <button class="house-btn" onclick="triggerPOSFromCalculator()" style="background:#4caf50; color:#fff; margin-top:5px;">📡 Paga con POS Contactless</button>
   </div>
 
   <div class="card" style="border: 1px solid #ff9800;">
@@ -474,11 +475,6 @@
       if (!targetGroup) return false;
       let ownedNames = player.properties.map(pr => pr.name.toLowerCase());
       return targetGroup.every(propInGroup => ownedNames.includes(propInGroup.toLowerCase()));
-    }
-
-    function getTargetColorGroup(propertyName) {
-      for (let group of colorGroups) { if (group.some(p => p.toLowerCase() === propertyName.toLowerCase())) return group; }
-      return null;
     }
 
     function updateUI() {
@@ -1133,6 +1129,77 @@
         soundError();
         alert("Il tuo telefono o il browser (Chrome Android necessario) non supporta la lettura Web NFC. Assicurati che l'NFC sia attivo nelle impostazioni del telefono.");
       }
+    }
+
+    /* MODALITA' POS CONTACTLESS AUTOMATICA */
+    async function startNFC_POS_Payment(amount, ownerIdx, reasonText) {
+      if ('NDEFReader' in window) {
+        try {
+          const ndef = new NDEFReader();
+          await ndef.scan();
+          alert(`POS Contactless Attivo! Inquilino: avvicina la carta NFC per pagare €A ${amount}`);
+          logAction(`📡 <strong>POS Attivo:</strong> In attesa di lettura carta per €A ${amount}...`);
+
+          ndef.addEventListener("reading", ({ message, serialNumber }) => {
+            let textDecoder = new TextDecoder();
+            let scannedText = "";
+
+            for (const record of message.records) {
+              if (record.recordType === "text") {
+                scannedText = textDecoder.decode(record.data);
+              }
+            }
+            if (!scannedText) scannedText = serialNumber;
+
+            let tenantIdx = players.findIndex(p => p.name.toLowerCase() === scannedText.toLowerCase().trim());
+
+            if (tenantIdx !== -1) {
+              let tenant = players[tenantIdx];
+              let owner = players[ownerIdx];
+
+              if (tenantIdx === parseInt(ownerIdx)) {
+                soundError();
+                alert("Il proprietario non può pagare l'affitto a se stesso!");
+                return;
+              }
+
+              if (tenant.balance < amount) {
+                soundError();
+                alert(`Fondi insufficienti per ${tenant.name}! Saldo attuale: €A ${tenant.balance}`);
+                return;
+              }
+
+              tenant.balance -= amount;
+              owner.balance += amount;
+
+              soundSuccess();
+              logAction(`💳 <strong>POS Contactless:</strong> <strong>${tenant.name}</strong> ha pagato <strong>€A ${amount}</strong> a <strong>${owner.name}</strong>.<span class="log-reason">${reasonText}</span>`);
+              updateUI();
+              alert(`Pagamento POS riuscito!\n€A ${amount} pagati da ${tenant.name} a ${owner.name}.`);
+            } else {
+              soundError();
+              alert(`Carta NFC non riconosciuta come giocatore: "${scannedText}"`);
+            }
+          });
+        } catch (error) {
+          soundError();
+          alert("Errore POS NFC: " + error);
+        }
+      } else {
+        alert("NFC non supportato su questo dispositivo o browser (usa Chrome su Android).");
+      }
+    }
+
+    function triggerPOSFromCalculator() {
+      const ownerIdx = document.getElementById('calc-owner').value;
+      let rentAmount = parseInt(document.getElementById('calc-result-display').innerText.replace('€A', '').trim());
+      let propSelect = document.getElementById('calc-property');
+      let propName = propSelect.selectedIndex > 0 ? propSelect.options[propSelect.selectedIndex].text : "Affitto";
+
+      if (ownerIdx === "") return alert("Seleziona il proprietario che deve ricevere il pagamento!");
+      if (isNaN(rentAmount) || rentAmount <= 0) return alert("Importo non valido!");
+
+      startNFC_POS_Payment(rentAmount, ownerIdx, `Affitto casella: ${propName}`);
     }
 
     function showCardModal(qrContent) {
