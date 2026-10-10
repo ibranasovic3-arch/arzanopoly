@@ -32,7 +32,8 @@
     button { background: #4caf50; color: #fff; font-weight: bold; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; }
     button:active { transform: scale(0.97); opacity: 0.9; }
     button.bank-btn { background: #2196f3; }
-    button.qr-btn { background: #9c27b0; margin-bottom: 15px; }
+    button.qr-btn { background: #9c27b0; margin-bottom: 8px; }
+    button.nfc-btn { background: #009688; margin-bottom: 15px; }
     button.reset-btn { background: #f44336; margin-top: 15px; } 
     button.quick-btn { background: #ff9800; }
     button.dice-btn { background: #e91e63; margin-top: 15px; box-shadow: 0 4px 12px rgba(233,30,99,0.4); }
@@ -67,7 +68,7 @@
     #dice-sum-display { text-align: center; font-size: 1.1rem; color: #ffeb3b; font-weight: bold; margin-top: 5px; }
     #reader { width: 100%; margin-top: 10px; border-radius: 8px; overflow: hidden; background: #000; }
 
-    /* POPUP DETTAGLI CARTA QR */
+    /* POPUP DETTAGLI CARTA QR/NFC */
     .modal-overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0,0,0,0.85); display: none; justify-content: center;
@@ -149,7 +150,8 @@
   </div>
 
   <div class="card">
-    <button class="qr-btn" onclick="startScanner()">📷 Scansiona Carta / Atto</button>
+    <button class="qr-btn" onclick="startScanner()">📷 Scansiona Carta / Atto (QR)</button>
+    <button class="nfc-btn" onclick="startNFCScanner()">📡 Leggi Tag NFC</button>
     <div id="reader" style="display: none;"></div>
 
     <div style="display:flex; gap:10px;">
@@ -1068,7 +1070,7 @@
       }
     }
 
-    /* GESTIONE FOTOCAMERA CON POPUP DETTAGLI SCHERMATA */
+    /* GESTIONE FOTOCAMERA QR CODE */
     function startScanner() {
       const r = document.getElementById('reader');
       if (r.style.display === 'none') {
@@ -1100,6 +1102,39 @@
       // Ignora la ricerca continua del QR
     }
 
+    /* GESTIONE LETTORE NFC NATIVO (WEB NFC API) */
+    async function startNFCScanner() {
+      if ('NDEFReader' in window) {
+        try {
+          const ndef = new NDEFReader();
+          await ndef.scan();
+          logAction(`📡 <strong>Lettore NFC Attivo:</strong> Avvicina la carta al telefono...`);
+          alert("NFC Attivo! Avvicina la tesserina o la carta al retro dello smartphone.");
+
+          ndef.addEventListener("reading", ({ message, serialNumber }) => {
+            soundSuccess();
+            let textDecoder = new TextDecoder();
+            let scannedData = "";
+
+            for (const record of message.records) {
+              if (record.recordType === "text") {
+                scannedData = textDecoder.decode(record.data);
+              }
+            }
+
+            if (!scannedData) scannedData = `Tag ID: ${serialNumber}`;
+            showCardModal(scannedData);
+          });
+        } catch (error) {
+          soundError();
+          alert("Errore nell'avvio dell'NFC: " + error);
+        }
+      } else {
+        soundError();
+        alert("Il tuo telefono o il browser (Chrome Android necessario) non supporta la lettura Web NFC. Assicurati che l'NFC sia attivo nelle impostazioni del telefono.");
+      }
+    }
+
     function showCardModal(qrContent) {
       const modal = document.getElementById('qr-modal');
       const titleEl = document.getElementById('modal-card-title');
@@ -1120,10 +1155,10 @@
       } else {
         titleEl.innerText = "Scheda Scansionata";
         titleEl.style.color = "#ffeb3b";
-        bodyEl.innerHTML = `<strong>Contenuto QR:</strong><br>${qrContent}`;
+        bodyEl.innerHTML = `<strong>Contenuto Tag / QR:</strong><br>${qrContent}`;
       }
 
-      logAction(`📷 <strong>QR Scansionato:</strong> ${qrContent}`);
+      logAction(`📷 <strong>Letto Tag / QR:</strong> ${qrContent}`);
       modal.style.display = 'flex';
     }
 
