@@ -1,1336 +1,211 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#121212">
-  <title>Banco Arzanopoly</title>
-  
-  <link rel="manifest" href='data:application/manifest+json,{"name":"Banco Arzanopoly","short_name":"Arzanopoly","start_url":".","display":"standalone","background_color":"#121212","theme_color":"#4caf50","icons":[{"src":"https://cdn-icons-png.flaticon.com/512/2635/2635384.png","sizes":"512x512","type":"image/png"}]}'>
+<!-- Header -->
+<header class="w-full max-w-md mx-auto text-center py-4">
+    <h1 class="text-3xl font-bold tracking-wider text-amber-400">🎲 ARZANOPOLY</h1>
+    <p class="text-sm text-slate-400 mt-1">Gestione Bancaria & Lettore Contratti NFC</p>
+</header>
 
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-  <style>
-    * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-    body { 
-      font-family: system-ui, -apple-system, sans-serif; 
-      background: #121212; 
-      color: #fff; 
-      margin: 0; 
-      padding: 12px; 
-      padding-bottom: env(safe-area-inset-bottom, 40px);
-      user-select: none;
-    }
-    h1 { text-align: center; color: #4caf50; margin-bottom: 15px; font-size: 1.6rem; }
-    .card { background: #1e1e1e; border-radius: 14px; padding: 15px; margin-bottom: 15px; border: 1px solid #333; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
-    .player-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #333; }
-    .balance { font-size: 1.3rem; font-weight: bold; color: #ffeb3b; }
-    input, select, button { width: 100%; padding: 14px; margin: 6px 0; border-radius: 10px; border: none; font-size: 1rem; }
-    input, select { background: #2a2a2a; color: #fff; border: 1px solid #444; outline: none; }
+<!-- Main Content Area -->
+<main class="w-full max-w-md mx-auto flex-1 flex flex-col justify-center space-y-6 my-4">
     
-    button { background: #4caf50; color: #fff; font-weight: bold; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; }
-    button:active { transform: scale(0.97); opacity: 0.9; }
-    button.bank-btn { background: #2196f3; }
-    button.qr-btn { background: #9c27b0; margin-bottom: 8px; }
-    button.nfc-btn { background: #009688; margin-bottom: 15px; }
-    button.reset-btn { background: #f44336; margin-top: 15px; } 
-    button.quick-btn { background: #ff9800; }
-    button.dice-btn { background: #e91e63; margin-top: 15px; box-shadow: 0 4px 12px rgba(233,30,99,0.4); }
-    button.house-btn { background: #00bcd4; color: #000; }
-    button.prop-btn { background: #607d8b; font-size: 0.9rem; padding: 10px; margin-top: 10px; }
-    button.trade-btn { background: #9c27b0; font-size: 0.9rem; padding: 10px; margin-top: 10px; }
-    
-    .history { font-size: 0.9rem; color: #bbb; max-height: 200px; overflow-y: auto; }
-    .log-entry { background: #2a2a2a; padding: 8px; margin-bottom: 5px; border-radius: 6px; border-left: 3px solid #4caf50; }
-    .log-reason { font-size: 0.8rem; color: #888; font-style: italic; display: block; margin-top: 2px; }
-    
-    .prop-tag { background: #2a2a2a; border: 1px solid #444; padding: 8px 10px; margin: 6px 0; border-radius: 6px; font-size: 0.9rem; border-left: 6px solid #666; }
-    .prop-tag.mortgaged { border-color: #f44336; opacity: 0.6; text-decoration: line-through; }
-    
-    .dice-container { display: flex; justify-content: center; gap: 20px; align-items: center; margin: 10px 0; }
-    .die {
-      width: 60px; height: 60px; background: #252525; border: 2px solid #555; border-radius: 12px;
-      display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); padding: 8px; box-sizing: border-box;
-      box-shadow: 0 6px 12px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.1);
-      transition: transform 0.2s ease;
-    }
-    .die.rolling { transform: rotate(180deg) scale(0.9); }
-    .dot { background: #ffeb3b; border-radius: 50%; width: 10px; height: 10px; align-self: center; justify-self: center; box-shadow: 0 0 4px #ffeb3b; }
-    
-    .face-1 .dot-5 { grid-area: 2 / 2 / 3 / 3; }
-    .face-2 .dot-1 { grid-area: 1 / 1 / 2 / 2; } .face-2 .dot-9 { grid-area: 3 / 3 / 4 / 4; }
-    .face-3 .dot-1 { grid-area: 1 / 1 / 2 / 2; } .face-3 .dot-5 { grid-area: 2 / 2 / 3 / 3; } .face-3 .dot-9 { grid-area: 3 / 3 / 4 / 4; }
-    .face-4 .dot-1 { grid-area: 1 / 1 / 2 / 2; } .face-4 .dot-3 { grid-area: 1 / 3 / 2 / 4; } .face-4 .dot-7 { grid-area: 3 / 1 / 4 / 2; } .face-4 .dot-9 { grid-area: 3 / 3 / 4 / 4; }
-    .face-5 .dot-1 { grid-area: 1 / 1 / 2 / 2; } .face-5 .dot-3 { grid-area: 1 / 3 / 2 / 4; } .face-5 .dot-5 { grid-area: 2 / 2 / 3 / 3; } .face-5 .dot-7 { grid-area: 3 / 1 / 4 / 2; } .face-5 .dot-9 { grid-area: 3 / 3 / 4 / 4; }
-    .face-6 .dot-1 { grid-area: 1 / 1 / 2 / 2; } .face-6 .dot-3 { grid-area: 1 / 3 / 2 / 4; } .face-6 .dot-4 { grid-area: 2 / 1 / 3 / 2; } .face-6 .dot-6 { grid-area: 2 / 3 / 3 / 4; } .face-6 .dot-7 { grid-area: 3 / 1 / 4 / 2; } .face-6 .dot-9 { grid-area: 3 / 3 / 4 / 4; }
-
-    #dice-sum-display { text-align: center; font-size: 1.1rem; color: #ffeb3b; font-weight: bold; margin-top: 5px; }
-    #reader { width: 100%; margin-top: 10px; border-radius: 8px; overflow: hidden; background: #000; }
-
-    /* POPUP DINAMICO CARTA/PROPRIETA' */
-    .modal-overlay {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.85); display: none; justify-content: center;
-      align-items: center; z-index: 9999; padding: 20px;
-    }
-    .card-modal {
-      background: #252525; border-radius: 16px; width: 100%; max-width: 350px;
-      padding: 20px; border: 2px solid #4caf50; box-shadow: 0 10px 25px rgba(0,0,0,0.8);
-      text-align: center;
-    }
-    .card-title { font-size: 1.4rem; color: #ffeb3b; font-weight: bold; margin-bottom: 10px; }
-    .card-body { font-size: 1rem; color: #ccc; margin-bottom: 15px; text-align: left; background: #1a1a1a; padding: 12px; border-radius: 8px; }
-  </style>
-</head>
-<body>
-
-  <h1>🏦 Banco Arzanopoly</h1>
-
-  <!-- Popup Dinamico Azioni Carta Scansionata -->
-  <div id="qr-modal" class="modal-overlay">
-    <div class="card-modal" id="qr-modal-card">
-      <div class="card-title" id="modal-card-title">Atto / Carta</div>
-      <div class="card-body" id="modal-card-body">Caricamento dettagli...</div>
-      <div id="modal-actions" style="display:flex; flex-direction:column; gap:8px;"></div>
-      <button onclick="closeCardModal()" style="background:#607d8b; margin-top:8px;">Chiudi</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <div id="players-list">Nessun giocatore. Aggiungili sotto!</div>
-  </div>
-
-  <div class="card" style="border: 1px solid #4caf50;">
-    <h3 style="color: #4caf50; margin-top: 0;">⚙️ Imposta Capitale Iniziale</h3>
-    <label>Cifra iniziale per i nuovi giocatori (€A):</label>
-    <input type="number" id="initial-capital-input" value="1500" min="100" step="100">
-  </div>
-
-  <div class="card" style="border: 1px solid #607d8b;">
-    <h3 style="color: #607d8b; margin-top: 0;">📋 Proprietà & Edifici</h3>
-    <p style="font-size: 0.8rem; color: #aaa; margin-top: -10px;">Assegna terreni o stazioni</p>
-    
-    <div style="display:flex; gap:10px;">
-      <div style="flex:1;">
-        <label>Giocatore:</label>
-        <select id="owner-assign"></select>
-      </div>
-      <div style="flex:1;">
-        <label>Proprietà / Stazione:</label>
-        <select id="prop-assign">
-          <option value="" disabled selected>-- Scegli --</option>
-        </select>
-      </div>
-    </div>
-    <button class="prop-btn" onclick="assignPropertyToPlayer()">➕ Assegna e Paga</button>
-  </div>
-
-  <div class="card" style="border: 1px solid #9c27b0;">
-    <h3 style="color: #9c27b0; margin-top: 0;">🤝 Scambio & Offerta</h3>
-    <div style="display:flex; gap:10px;">
-      <div style="flex:1;">
-        <label>Acquirente:</label>
-        <select id="trade-buyer"></select>
-      </div>
-      <div style="flex:1;">
-        <label>Venditore:</label>
-        <select id="trade-seller" onchange="updateSellerProperties()"></select>
-      </div>
-    </div>
-
-    <label>Proprietà:</label>
-    <select id="trade-property">
-      <option value="" disabled selected>-- Seleziona venditore prima --</option>
-    </select>
-
-    <label>Offerta (€A):</label>
-    <input type="number" id="trade-amount" placeholder="Es. 150" min="0">
-
-    <button class="trade-btn" onclick="executeTrade()">🤝 Esegui Scambio</button>
-  </div>
-
-  <div class="card">
-    <button class="qr-btn" onclick="startScanner()">📷 Scansiona Carta / Atto (QR)</button>
-    <button class="nfc-btn" onclick="startNFCScanner()">📡 Leggi Tag NFC (Proprietà/Giocatore)</button>
-    <div id="reader" style="display: none;"></div>
-
-    <div style="display:flex; gap:10px;">
-      <div style="flex:1;">
-        <label>Da:</label>
-        <select id="from-player"></select>
-      </div>
-      <div style="flex:1;">
-        <label>A:</label>
-        <select id="to-player"></select>
-      </div>
-    </div>
-
-    <label>Importo (€A):</label>
-    <input type="number" id="amount" placeholder="Es. 200" min="1">
-    
-    <label>Causale:</label>
-    <input type="text" id="reason" placeholder="Affitto, Acquisto, ecc...">
-
-    <button onclick="makeTransaction()">💸 Conferma Bonifico</button>
-  </div>
-
-  <div class="card" style="border: 1px solid #00bcd4;">
-    <h3 style="color: #00bcd4; margin-top: 0;">🏠 Calcolatore Affitto</h3>
-    <label>Terreno / Stazione:</label>
-    <select id="calc-property" onchange="updatePropertyInfo()">
-      <option value="" disabled selected>-- Scegli --</option>
-    </select>
-
-    <label>Livello:</label>
-    <select id="calc-level" onchange="calculateRent()">
-      <option value="base">Solo Terreno / 1 Stazione (€A 25)</option>
-      <option value="double">Terreno Raddoppiato / 2 Stazioni (€A 50)</option>
-      <option value="station3">3 Stazioni (€A 100)</option>
-      <option value="station4">4 Stazioni (€A 200)</option>
-      <option value="c1">1 Casa</option>
-      <option value="c2">2 Case</option>
-      <option value="c3">3 Case</option>
-      <option value="c4">4 Case</option>
-      <option value="hotel">Albergo</option>
-    </select>
-
-    <div style="background: #2a2a2a; border-radius: 8px; padding: 10px; text-align: center; margin: 10px 0; border: 1px solid #444;">
-      <span style="font-size: 0.9rem; color: #ccc;">Affitto Calcolato:</span>
-      <div id="calc-result-display" style="font-size: 1.8rem; font-weight: bold; color: #ffeb3b;">€A 0</div>
-    </div>
-
-    <div style="display:flex; gap:10px;">
-      <div style="flex:1;">
-        <label>Inquilino:</label>
-        <select id="calc-tenant"></select>
-      </div>
-      <div style="flex:1;">
-        <label>Proprietario (Chi riceve):</label>
-        <select id="calc-owner"></select>
-      </div>
-    </div>
-
-    <button class="house-btn" onclick="applyCalculatedRent()">Paga Affitto (Manuale)</button>
-    <button class="house-btn" onclick="triggerPOSFromCalculator()" style="background:#4caf50; color:#fff; margin-top:5px;">📡 Paga con POS Contactless</button>
-  </div>
-
-  <div class="card" style="border: 1px solid #ff9800;">
-    <h3 style="color: #ff9800; margin-top: 0;">🔨 Asta Automatica</h3>
-    <input type="text" id="auction-item" placeholder="Proprietà all'asta">
-    <div style="display:flex; gap:10px;">
-      <input type="number" id="auction-base" value="10" min="10" style="flex:1;" disabled>
-      <button onclick="startAuction()" style="flex:1; background:#ff9800; color:#000;">Inizia</button>
-    </div>
-
-    <div id="active-auction" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px dashed #555;">
-      <div id="auction-timer-display" style="font-size: 3.5rem; text-align: center; color: #4caf50; font-weight: bold;">15</div>
-      <div style="text-align: center; font-size: 0.8rem; color: #888; margin-bottom: 10px;">SECONDI AL TERMINE</div>
-      
-      <div style="background: #2a2a2a; border-radius: 8px; padding: 10px; text-align: center; border: 1px solid #444;">
-        <h4 style="color:#ffeb3b; margin:0; font-size:1.3rem;">Offerta: <span id="current-bid">0</span> €A</h4>
-        <p style="margin:5px 0 0 0; color:#ccc;">In vantaggio: <strong id="highest-bidder" style="color:#fff;">Nessuno</strong></p>
-      </div>
-      
-      <label style="margin-top:15px; display:block;">Chi rilancia?</label>
-      <select id="bidder-select"></select>
-      
-      <div style="display:flex; gap:5px; margin-top:5px;">
-        <button onclick="placeBid(0)" style="background:#607d8b; flex:1;">BASE</button>
-        <button onclick="placeBid(1)" style="background:#2196f3; flex:1;">+1</button>
-        <button onclick="placeBid(5)" style="background:#2196f3; flex:1;">+5</button>
-        <button onclick="placeBid(10)" style="background:#2196f3; flex:1;">+10</button>
-      </div>
-      <button onclick="customBid()" style="background:#9c27b0; margin-top:5px;">💰 Rilancio Libero</button>
-      <button onclick="endAuctionEarly()" style="background:#f44336; margin-top:15px;">🛑 Termina Ora</button>
-    </div>
-  </div>
-
-  <div class="card" id="setup-card">
-    <h3>Nuovo Giocatore</h3>
-    <input type="text" id="player-name" placeholder="Nome Giocatore" onkeypress="handleEnter(event)">
-    <button onclick="addPlayer()">Aggiungi Giocatore</button>
-  </div>
-
-  <div class="card" style="border: 1px solid #e91e63;">
-    <h3 style="color: #e91e63; margin-top: 0;">⚡ Turno, Dadi & Registro</h3>
-    
-    <label>Giocatore Attivo:</label>
-    <select id="quick-player"></select>
-
-    <div style="background: #2a2a2a; border-radius: 8px; padding: 15px; margin: 12px 0; border: 1px solid #444;">
-      <div class="dice-container">
-        <div id="die1" class="die face-6">
-          <div class="dot dot-1"></div><div class="dot dot-3"></div><div class="dot dot-4"></div>
-          <div class="dot dot-6"></div><div class="dot dot-7"></div><div class="dot dot-9"></div>
+    <!-- Status Panel -->
+    <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-6 shadow-xl backdrop-blur-md">
+        <h2 class="text-lg font-semibold text-amber-300 mb-2 flex items-center gap-2">
+            <span>📡</span> Stato Sistema NFC / POS
+        </h2>
+        <div id="nfc-status" class="text-sm text-slate-300 bg-slate-900/60 p-3 rounded-xl border border-slate-700/50 min-h-[60px] flex items-center">
+            Pronto. Avvicina una carta contratto NFC per leggere i dati completi.
         </div>
-        <div id="die2" class="die face-6">
-          <div class="dot dot-1"></div><div class="dot dot-3"></div><div class="dot dot-4"></div>
-          <div class="dot dot-6"></div><div class="dot dot-7"></div><div class="dot dot-9"></div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="space-y-4">
+        <button onclick="startNFCReader()" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold py-4 px-6 rounded-2xl shadow-lg transition-all transform active:scale-95 flex items-center justify-center gap-3 text-lg">
+            <span>📶</span> Leggi Carta NFC (JSON / Testo)
+        </button>
+
+        <button onclick="simulateDemoCard()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-3 px-6 rounded-2xl border border-slate-600 transition-all text-sm">
+            🧪 Simula Lettura Carta (Demo JSON)
+        </button>
+    </div>
+
+    <!-- Log attività -->
+    <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-inner">
+        <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Registro Operazioni</h3>
+        <div id="log-box" class="text-xs font-mono text-slate-400 space-y-1 max-h-32 overflow-y-auto">
+            <div>[System] Applicazione avviata correttamente.</div>
         </div>
-      </div>
-      <div id="dice-sum-display">Pronto al lancio</div>
-      <button class="dice-btn" onclick="rollDice()">🎲 Lancia i Dadi</button>
     </div>
+</main>
 
-    <button class="bank-btn" onclick="quickAction('via')">Passaggio dal VIA (+€A 200)</button>
-    <button class="quick-btn" onclick="quickAction('tax100')">Paga Tassa (-€A 100)</button>
-    <button class="quick-btn" onclick="quickAction('tax200')">Paga Tassa (-€A 200)</button>
+<!-- Footer -->
+<footer class="w-full max-w-md mx-auto text-center text-xs text-slate-500 py-2">
+    Arzanopoly PWA &bull; Web NFC & HCE Supported
+</footer>
 
-    <h3 style="margin-top: 20px;">📜 Registro</h3>
-    <div class="history" id="logs">
-      <div class="log-entry">• Sistema Avviato.</div>
-    </div>
-    <button class="reset-btn" onclick="resetGame()">🗑️ Azzera Tutto</button>
-  </div>
-
-  <script>
-    const stationNames = ["capolinea bus eav", "bus linea 920", "bus linea c1n", "stazione ctp/anm"];
-
-    const boardSpaces = [
-      { name: "VIA!", type: "go", price: 0 },
-      { name: "RIONE 167", type: "property", price: 60 },
-      { name: "Probabilità", type: "card", price: 0 },
-      { name: "'A RRETO 'O RROLOGIO", type: "property", price: 100 },
-      { name: "Tassa Patrimoniale", type: "tax", price: 200 },
-      { name: "Capolinea Bus EAV", type: "station", price: 200 },
-      { name: "VIA G. GARIBALDI", type: "property", price: 120 },
-      { name: "Imprevisti", type: "card", price: 0 },
-      { name: "VIA V. EMANUELE 3", type: "property", price: 120 },
-      { name: "VIA ZANARDELLI", type: "property", price: 140 },
-      { name: "Prigione (In Transito / Sosta)", type: "jail", price: 0 },
-      { name: "NGOPP' E SCOL", type: "property", price: 160 },
-      { name: "Società Elettrica", type: "utility", price: 150 },
-      { name: "E' PALAZZIN", type: "property", price: 160 },
-      { name: "'A RRETO 'A ROTT'", type: "property", price: 180 },
-      { name: "Bus Linea 920", type: "station", price: 200 },
-      { name: "MIEZZ' 'A PIAZZ", type: "property", price: 200 },
-      { name: "Probabilità", type: "card", price: 0 },
-      { name: "O VIC RA CROCE", type: "property", price: 200 },
-      { name: "NGOPP A 'NNUNZIAT", type: "property", price: 220 },
-      { name: "Parcheggio Gratuito", type: "parking", price: 0 },
-      { name: "ABBASCO O' LAVENAR", type: "property", price: 240 },
-      { name: "Imprevisti", type: "card", price: 0 },
-      { name: "VIA ARRET O MACCIELL", type: "property", price: 240 },
-      { name: "VIA C. COLOMBO", type: "property", price: 260 },
-      { name: "Bus Linea C1N", type: "station", price: 200 },
-      { name: "CHIESA S. AGRIPPINO", type: "property", price: 280 },
-      { name: "CORSO S. D'AMATO", type: "property", price: 280 },
-      { name: "Società Acqua Potabile", type: "utility", price: 150 },
-      { name: "VIA SQUILLACE", type: "property", price: 300 },
-      { name: "In Prigione!", type: "gotojail", price: 0 },
-      { name: "VIA NAPOLI", type: "property", price: 320 },
-      { name: "VIA SETTE RE", type: "property", price: 320 },
-      { name: "Probabilità", type: "card", price: 0 },
-      { name: "'A 'NSCESA D'O PICNIC", type: "property", price: 350 },
-      { name: "Stazione CTP/ANM", type: "station", price: 200 },
-      { name: "Imprevisti", type: "card", price: 0 },
-      { name: "ROTONDA ARZANO", type: "property", price: 350 },
-      { name: "Tassa di Lusso", type: "tax", price: 100 },
-      { name: "VILLA COMUNALE", type: "property", price: 400 }
-    ];
-
-    let players = [];
-    let html5QrcodeScanner = null;
-
-    const propertiesDB = [
-      { name: "RIONE 167", type: "property", price: 60, houseCost: 50, base: 2, c1: 10, c2: 30, c3: 90, c4: 160, hotel: 250, mortgage: 30 },
-      { name: "'A RRETO 'O RROLOGIO", type: "property", price: 100, houseCost: 50, base: 4, c1: 20, c2: 60, c3: 180, c4: 320, hotel: 450, mortgage: 50 },
-      { name: "Capolinea Bus EAV", type: "station", price: 200, houseCost: 0, base: 25, mortgage: 100 },
-      { name: "VIA G. GARIBALDI", type: "property", price: 120, houseCost: 50, base: 6, c1: 30, c2: 90, c3: 270, c4: 400, hotel: 550, mortgage: 60 },
-      { name: "VIA V. EMANUELE 3", type: "property", price: 120, houseCost: 50, base: 6, c1: 30, c2: 90, c3: 270, c4: 400, hotel: 550, mortgage: 60 },
-      { name: "VIA ZANARDELLI", type: "property", price: 140, houseCost: 100, base: 8, c1: 40, c2: 100, c3: 300, c4: 450, hotel: 600, mortgage: 70 },
-      { name: "NGOPP' E SCOL", type: "property", price: 160, houseCost: 100, base: 10, c1: 50, c2: 150, c3: 450, c4: 625, hotel: 750, mortgage: 80 },
-      { name: "E' PALAZZIN", type: "property", price: 160, houseCost: 100, base: 10, c1: 50, c2: 150, c3: 450, c4: 625, hotel: 750, mortgage: 80 },
-      { name: "'A RRETO 'A ROTT'", type: "property", price: 180, houseCost: 100, base: 12, c1: 60, c2: 180, c3: 500, c4: 700, hotel: 900, mortgage: 100 },
-      { name: "Bus Linea 920", type: "station", price: 200, houseCost: 0, base: 25, mortgage: 100 },
-      { name: "MIEZZ' 'A PIAZZ", type: "property", price: 200, houseCost: 150, base: 14, c1: 70, c2: 200, c3: 550, c4: 750, hotel: 950, mortgage: 110 },
-      { name: "O VIC RA CROCE", type: "property", price: 200, houseCost: 150, base: 14, c1: 70, c2: 200, c3: 550, c4: 750, hotel: 950, mortgage: 110 },
-      { name: "NGOPP A 'NNUNZIAT", type: "property", price: 220, houseCost: 150, base: 16, c1: 80, c2: 220, c3: 600, c4: 800, hotel: 1000, mortgage: 120 },
-      { name: "ABBASCO O' LAVENAR", type: "property", price: 240, houseCost: 150, base: 18, c1: 90, c2: 250, c3: 700, c4: 875, hotel: 1050, mortgage: 130 },
-      { name: "VIA ARRET O MACCIELL", type: "property", price: 240, houseCost: 150, base: 18, c1: 90, c2: 250, c3: 700, c4: 875, hotel: 1050, mortgage: 130 },
-      { name: "VIA C. COLOMBO", type: "property", price: 260, houseCost: 150, base: 20, c1: 100, c2: 300, c3: 750, c4: 925, hotel: 1100, mortgage: 140 },
-      { name: "Bus Linea C1N", type: "station", price: 200, houseCost: 0, base: 25, mortgage: 100 },
-      { name: "CHIESA S. AGRIPPINO", type: "property", price: 280, houseCost: 200, base: 22, c1: 110, c2: 330, c3: 800, c4: 975, hotel: 1150, mortgage: 150 },
-      { name: "CORSO S. D'AMATO", type: "property", price: 280, houseCost: 200, base: 22, c1: 110, c2: 330, c3: 800, c4: 975, hotel: 1150, mortgage: 150 },
-      { name: "VIA SQUILLACE", type: "property", price: 300, houseCost: 200, base: 24, c1: 120, c2: 360, c3: 850, c4: 1025, hotel: 1200, mortgage: 160 },
-      { name: "Stazione CTP/ANM", type: "station", price: 200, houseCost: 0, base: 25, mortgage: 100 },
-      { name: "VIA NAPOLI", type: "property", price: 320, houseCost: 200, base: 26, c1: 130, c2: 390, c3: 900, c4: 1100, hotel: 1275, mortgage: 175 },
-      { name: "VIA SETTE RE", type: "property", price: 320, houseCost: 200, base: 26, c1: 130, c2: 390, c3: 900, c4: 1100, hotel: 1275, mortgage: 175 },
-      { name: "'A 'NSCESA D'O PICNIC", type: "property", price: 350, houseCost: 200, base: 28, c1: 150, c2: 450, c3: 1000, c4: 1200, hotel: 1400, mortgage: 200 },
-      { name: "ROTONDA ARZANO", type: "property", price: 350, houseCost: 200, base: 35, c1: 175, c2: 500, c3: 1100, c4: 1300, hotel: 1500, mortgage: 225 },
-      { name: "VILLA COMUNALE", type: "property", price: 400, houseCost: 200, base: 50, c1: 200, c2: 600, c3: 1400, c4: 1700, hotel: 2000, mortgage: 300 }
-    ];
-
-    const colorGroups = [
-      ["RIONE 167", "'A RRETO 'O RROLOGIO"],
-      ["VIA G. GARIBALDI", "VIA V. EMANUELE 3", "VIA ZANARDELLI"],
-      ["NGOPP' E SCOL", "E' PALAZZIN", "'A RRETO 'A ROTT'"],
-      ["MIEZZ' 'A PIAZZ", "O VIC RA CROCE", "NGOPP A 'NNUNZIAT"],
-      ["ABBASCO O' LAVENAR", "VIA ARRET O MACCIELL", "VIA C. COLOMBO"],
-      ["CHIESA S. AGRIPPINO", "CORSO S. D'AMATO", "VIA SQUILLACE"],
-      ["VIA NAPOLI", "VIA SETTE RE", "'A 'NSCESA D'O PICNIC"],
-      ["ROTONDA ARZANO", "VILLA COMUNALE"]
-    ];
-
-    const colorGroupColors = {
-      "RIONE 167": "#8B4513", "'A RRETO 'O RROLOGIO": "#8B4513",
-      "VIA G. GARIBALDI": "#00BFFF", "VIA V. EMANUELE 3": "#00BFFF", "VIA ZANARDELLI": "#00BFFF",
-      "NGOPP' E SCOL": "#FF1493", "E' PALAZZIN": "#FF1493", "'A RRETO 'A ROTT'": "#FF1493",
-      "MIEZZ' 'A PIAZZ": "#FF8C00", "O VIC RA CROCE": "#FF8C00", "NGOPP A 'NNUNZIAT": "#FF8C00",
-      "ABBASCO O' LAVENAR": "#FF0000", "VIA ARRET O MACCIELL": "#FF0000", "VIA C. COLOMBO": "#FF0000",
-      "CHIESA S. AGRIPPINO": "#FFD700", "CORSO S. D'AMATO": "#FFD700", "VIA SQUILLACE": "#FFD700",
-      "VIA NAPOLI": "#228B22", "VIA SETTE RE": "#228B22", "'A 'NSCESA D'O PICNIC": "#228B22",
-      "ROTONDA ARZANO": "#00008B", "VILLA COMUNALE": "#00008B",
-      "Capolinea Bus EAV": "#9e9e9e", "Bus Linea 920": "#9e9e9e", "Bus Linea C1N": "#9e9e9e", "Stazione CTP/ANM": "#9e9e9e"
-    };
-
-    let currentAuction = { active: false, item: "", currentBid: 10, highestBidder: -1, timeLeft: 15, timerInterval: null };
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    let audioCtx = null;
-
-    function initAudio() { if (!audioCtx) audioCtx = new AudioContext(); }
-    function playTone(frequency, type, duration, vol=0.1) {
-      try {
-        initAudio();
-        if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = type;
-        osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
-        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-        osc.connect(gain); gain.connect(audioCtx.destination);
-        osc.start(); osc.stop(audioCtx.currentTime + duration);
-      } catch (e) {}
-    }
-    function soundSuccess() { playTone(600, 'sine', 0.1, 0.2); setTimeout(() => playTone(1200, 'sine', 0.3, 0.2), 100); }
-    function soundError() { playTone(150, 'sawtooth', 0.4, 0.3); }
-    function soundBeep() { playTone(900, 'square', 0.1, 0.1); }
-    function soundTimerTick() { playTone(1000, 'sine', 0.05, 0.05); }
-    function soundTimerEnd() { playTone(400, 'square', 0.5, 0.3); setTimeout(() => playTone(400, 'square', 0.5, 0.3), 600); }
-    function soundDiceRolling() { playTone(800, 'square', 0.05, 0.1); setTimeout(() => playTone(600, 'square', 0.05, 0.1), 80); setTimeout(() => playTone(1000, 'square', 0.05, 0.1), 160); }
-
-    function isStationProperty(propName) { return stationNames.includes(propName.toLowerCase()); }
-    function countPlayerStations(player) {
-      let count = 0;
-      if (player.properties) player.properties.forEach(prop => { if (isStationProperty(prop.name)) count++; });
-      return count;
-    }
-    function playerOwnsFullColorGroup(player, propertyName) {
-      let targetGroup = null;
-      colorGroups.forEach(group => { if (group.some(p => p.toLowerCase() === propertyName.toLowerCase())) targetGroup = group; });
-      if (!targetGroup) return false;
-      let ownedNames = player.properties.map(pr => pr.name.toLowerCase());
-      return targetGroup.every(propInGroup => ownedNames.includes(propInGroup.toLowerCase()));
-    }
-
-    function loadGameState() {
-      try {
-        const savedPlayers = localStorage.getItem('arzanopoly_players');
-        const savedLogs = localStorage.getItem('arzanopoly_logs');
-        if (savedPlayers) {
-          players = JSON.parse(savedPlayers);
-          players.forEach(p => { 
-            if (!p.properties) p.properties = []; 
-            if (p.consecutiveDoubles === undefined) p.consecutiveDoubles = 0;
-            if (p.inJail === undefined) p.inJail = false;
-            p.properties.forEach(prop => { if (prop.houses === undefined) prop.houses = 0; });
-          });
-        }
-        if (savedLogs) document.getElementById('logs').innerHTML = savedLogs;
-      } catch (e) { players = []; }
-      initPropertySelectors();
-      updateUI();
-    }
-
-    function saveGameState() {
-      localStorage.setItem('arzanopoly_players', JSON.stringify(players));
-      localStorage.setItem('arzanopoly_logs', document.getElementById('logs').innerHTML);
-    }
-
-    function resetGame() {
-      if(confirm("Vuoi azzerare la partita e cancellare tutti i giocatori?")) {
-        localStorage.clear();
-        players = [];
-        document.getElementById('logs').innerHTML = '<div class="log-entry">• Memoria svuotata.</div>';
-        setDiceFace(1, 1); setDiceFace(2, 1);
-        document.getElementById('dice-sum-display').innerText = "Pronto al lancio";
-        if(currentAuction.active) endAuctionEarly();
-        initPropertySelectors();
-        updateUI();
-      }
-    }
-
-    window.onload = loadGameState;
-
-    function initPropertySelectors() {
-      const calcSelect = document.getElementById('calc-property');
-      const assignSelect = document.getElementById('prop-assign');
-      calcSelect.innerHTML = '<option value="" disabled selected>-- Scegli --</option>';
-      assignSelect.innerHTML = '<option value="" disabled selected>-- Scegli --</option>';
-      propertiesDB.forEach((p, idx) => {
-        let labelIcon = isStationProperty(p.name) ? '🚌' : '🔵';
-        let detailStr = isStationProperty(p.name) ? `(€A ${p.price})` : `(€A ${p.price} | Casa: €A ${p.houseCost})`;
-        calcSelect.innerHTML += `<option value="${idx}">${labelIcon} ${p.name} ${detailStr}</option>`;
-        assignSelect.innerHTML += `<option value="${idx}">${labelIcon} ${p.name} ${detailStr}</option>`;
-      });
-    }
-
-    function updateUI() {
-      const list = document.getElementById('players-list');
-      const fromSelect = document.getElementById('from-player');
-      const toSelect = document.getElementById('to-player');
-      const quickSelect = document.getElementById('quick-player');
-      const bidderSelect = document.getElementById('bidder-select');
-      const tenantSelect = document.getElementById('calc-tenant');
-      const ownerSelect = document.getElementById('calc-owner');
-      const assignOwnerSelect = document.getElementById('owner-assign');
-      const tradeBuyerSelect = document.getElementById('trade-buyer');
-      const tradeSellerSelect = document.getElementById('trade-seller');
-
-      const previouslySelected = quickSelect.value;
-      const previouslySeller = tradeSellerSelect.value;
-
-      list.innerHTML = '';
-      fromSelect.innerHTML = '<option value="BANK">🏛️ Banca</option>';
-      toSelect.innerHTML = '<option value="BANK">🏛️ Banca</option>';
-      quickSelect.innerHTML = '<option value="" disabled selected>-- Scegli Giocatore --</option>';
-      
-      const currentBidder = bidderSelect.value;
-      bidderSelect.innerHTML = '<option value="" disabled selected>-- Chi rilancia? --</option>';
-
-      tenantSelect.innerHTML = '<option value="" disabled selected>-- Chi paga --</option>';
-      ownerSelect.innerHTML = '<option value="" disabled selected>-- Chi riceve --</option>';
-      assignOwnerSelect.innerHTML = '<option value="" disabled selected>-- Scegli Giocatore --</option>';
-      tradeBuyerSelect.innerHTML = '<option value="" disabled selected>-- Chi acquista --</option>';
-      tradeSellerSelect.innerHTML = '<option value="" disabled selected>-- Chi vende --</option>';
-
-      if(players.length === 0) list.innerHTML = 'Nessun giocatore registrato.';
-
-      players.forEach((p, index) => {
-        if (!p.properties) p.properties = [];
-        if (p.consecutiveDoubles === undefined) p.consecutiveDoubles = 0;
-        if (p.inJail === undefined) p.inJail = false;
-
-        let propsHtml = '';
-        if (p.properties.length > 0) {
-          propsHtml = '<div style="margin-top:6px;">';
-          p.properties.forEach((prop, propIdx) => {
-            if (prop.houses === undefined) prop.houses = 0;
-            let mortgageClass = prop.mortgaged ? 'prop-tag mortgaged' : 'prop-tag';
-            let cardColor = colorGroupColors[prop.name] || '#666';
-            let isStation = isStationProperty(prop.name);
-            let buildingText = isStation ? "🚌 Stazione" : "Terreno";
-            if (!isStation) {
-              if (prop.houses > 0 && prop.houses <= 4) buildingText = `🏠 ${prop.houses} Case`;
-              else if (prop.houses >= 5) buildingText = `🏨 1 Albergo`;
-            }
-
-            let mortgageBtnText = prop.mortgaged ? 'Svincola (+10%)' : 'Ipotecca';
-            let mortgageBtnColor = prop.mortgaged ? '#4caf50' : '#f44336';
-            let houseButtonsHtml = '';
-            if (!isStation) {
-              houseButtonsHtml = `
-                <button onclick="addHouse(${index}, ${propIdx})" style="padding:4px 8px; font-size:0.75rem; background:#00bcd4; color:#000; width:auto; margin:0;" ${prop.mortgaged ? 'disabled' : ''}>➕ Casa</button>
-                <button onclick="removeHouse(${index}, ${propIdx})" style="padding:4px 8px; font-size:0.75rem; background:#ff9800; color:#000; width:auto; margin:0;" ${prop.houses === 0 || prop.mortgaged ? 'disabled' : ''}>➖ Vendi</button>
-              `;
-            }
-
-            propsHtml += `
-              <div class="${mortgageClass}" style="border-left-color: ${cardColor};">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                  <span>📍 <strong style="color: ${cardColor};">${prop.name}</strong> ${prop.mortgaged ? '(IPOTECATO)' : ''}</span>
-                  <span style="color:#00bcd4; font-size:0.85rem; font-weight:bold;">${buildingText}</span>
-                </div>
-                <div style="display:flex; gap:4px; margin-top:6px; flex-wrap:wrap;">
-                  ${houseButtonsHtml}
-                  <button onclick="toggleMortgage(${index}, ${propIdx})" style="padding:4px 8px; font-size:0.75rem; background:${mortgageBtnColor}; width:auto; margin:0;">${mortgageBtnText}</button>
-                  <button onclick="removeProperty(${index}, ${propIdx})" style="padding:4px 8px; font-size:0.75rem; background:#333; width:auto; margin:0;">❌</button>
-                </div>
-              </div>`;
-          });
-          propsHtml += '</div>';
-        } else {
-          propsHtml = '<div style="font-size:0.8rem; color:#666; font-style:italic; margin-top:4px;">Nessuna proprietà</div>';
-        }
-
-        let currentSquareName = boardSpaces[p.position || 0].name;
-        let jailStatusStr = p.inJail ? ' <span style="color:#f44336; font-weight:bold;">[PRIGIONE]</span>' : '';
-        list.innerHTML += `
-          <div class="player-row" style="flex-direction:column; align-items:flex-start;">
-            <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
-              <span style="font-weight:bold;">👤 ${p.name}${jailStatusStr} <span style="font-size:0.8rem; color:#00bcd4; font-weight:normal;">(${currentSquareName})</span></span>
-              <span class="balance">€A ${p.balance}</span>
+<!-- Modal Dettaglio Carta Contratto -->
+<div id="qr-modal" class="fixed inset-0 modal-backdrop hidden items-center justify-center p-4 z-50">
+    <div class="bg-slate-900 border border-slate-700 rounded-3xl max-w-md w-full p-6 shadow-2xl relative animate-in fade-in zoom-in duration-200">
+        <div class="flex justify-between items-start mb-4">
+            <div>
+                <span id="modal-card-badge" class="text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">Terreno</span>
+                <h3 id="modal-card-title" class="text-2xl font-bold text-white mt-2">Nome Proprietà</h3>
             </div>
-            <div style="width:100%;">${propsHtml}</div>
-          </div>`;
+            <button onclick="closeModal()" class="text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 p-2 rounded-full transition-all">
+                ✕
+            </button>
+        </div>
 
-        fromSelect.innerHTML += `<option value="${index}">${p.name}</option>`;
-        toSelect.innerHTML += `<option value="${index}">${p.name}</option>`;
-        quickSelect.innerHTML += `<option value="${index}">${p.name}</option>`;
-        bidderSelect.innerHTML += `<option value="${index}">${p.name} (€A ${p.balance})</option>`;
-        tenantSelect.innerHTML += `<option value="${index}">${p.name}</option>`;
-        ownerSelect.innerHTML += `<option value="${index}">${p.name}</option>`;
-        assignOwnerSelect.innerHTML += `<option value="${index}">${p.name}</option>`;
-        tradeBuyerSelect.innerHTML += `<option value="${index}">${p.name}</option>`;
-        tradeSellerSelect.innerHTML += `<option value="${index}">${p.name}</option>`;
-      });
-      
-      if (previouslySelected !== "" && players[previouslySelected]) quickSelect.value = previouslySelected;
-      else if (players.length > 0) quickSelect.value = "0";
+        <div id="modal-card-body" class="space-y-2 text-sm text-slate-300 border-t border-b border-slate-800 py-4 my-2">
+            <!-- Contenuto dinamico della carta -->
+        </div>
 
-      if (previouslySeller !== "" && players[previouslySeller]) {
-        tradeSellerSelect.value = previouslySeller;
-        updateSellerProperties();
-      }
+        <div class="mt-6 flex gap-3">
+            <button onclick="closeModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-4 rounded-xl transition-all text-sm">
+                Chiudi
+            </button>
+            <button onclick="alert('Operazione confermata dal Banco!'); closeModal();" class="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 px-4 rounded-xl transition-all text-sm">
+                Acquista / Paga
+            </button>
+        </div>
+    </div>
+</div>
 
-      if (currentBidder && bidderSelect.querySelector(`option[value="${currentBidder}"]`)) bidderSelect.value = currentBidder;
-      else if (players.length > 0) bidderSelect.selectedIndex = 1;
+<!-- JavaScript Logica NFC & JSON Parsing -->
+<script>
+    const propertiesDB = [
+        { name: "Rione 167", type: "property", price: 60, houseCost: 50, base: 2, c1: 10, c2: 30, c3: 90, c4: 160, hotel: 250, mortgage: 30 },
+        { name: "Capolinea Bus EAV", type: "station", price: 200, base: 25, mortgage: 100 }
+    ];
 
-      saveGameState();
+    function logAction(msg) {
+        const logBox = document.getElementById('log-box');
+        const time = new Date().toLocaleTimeString();
+        logBox.innerHTML += `<div>[${time}] ${msg}</div>`;
+        logBox.scrollTop = logBox.scrollHeight;
     }
 
-    function updateSellerProperties() {
-      const sellerIdx = document.getElementById('trade-seller').value;
-      const propSelect = document.getElementById('trade-property');
-      propSelect.innerHTML = '<option value="" disabled selected>-- Scegli Proprietà --</option>';
-      if (sellerIdx === "") return;
-      const seller = players[sellerIdx];
-      if (seller.properties && seller.properties.length > 0) {
-        seller.properties.forEach((prop, idx) => {
-          let statusStr = prop.mortgaged ? ' (IPOTECATO)' : (prop.houses > 0 ? ` (${prop.houses} Case)` : '');
-          propSelect.innerHTML += `<option value="${idx}">${prop.name}${statusStr}</option>`;
-        });
-      }
-    }
-
-    function executeTrade() {
-      const buyerIdx = document.getElementById('trade-buyer').value;
-      const sellerIdx = document.getElementById('trade-seller').value;
-      const propIdx = document.getElementById('trade-property').value;
-      const amount = parseInt(document.getElementById('trade-amount').value);
-
-      if (buyerIdx === "" || sellerIdx === "" || propIdx === "") return alert("Seleziona acquirente, venditore e proprietà!");
-      if (buyerIdx === sellerIdx) return alert("Acquirente e venditore non possono coincidere!");
-      if (isNaN(amount) || amount < 0) return alert("Inserisci un'offerta valida!");
-
-      const buyer = players[buyerIdx];
-      const seller = players[sellerIdx];
-      const propertyObj = seller.properties[propIdx];
-
-      if (propertyObj.houses > 0) return alert("Vendi prima le case presenti sulla proprietà!");
-      if (buyer.balance < amount) return alert(`${buyer.name} non ha fondi sufficienti!`);
-
-      buyer.balance -= amount;
-      seller.balance += amount;
-      seller.properties.splice(propIdx, 1);
-      buyer.properties.push(propertyObj);
-
-      soundSuccess();
-      logAction(`🤝 <strong>${buyer.name}</strong> acquista <em>${propertyObj.name}</em> da <strong>${seller.name}</strong> per <strong>€A ${amount}</strong>.`);
-      document.getElementById('trade-amount').value = '';
-      updateUI();
-      alert("Scambio completato!");
-    }
-
-    function addPlayer() {
-      const nameInput = document.getElementById('player-name');
-      const name = nameInput.value.trim();
-      const capInput = parseInt(document.getElementById('initial-capital-input').value);
-      const startingCapital = (isNaN(capInput) || capInput < 0) ? 1500 : capInput;
-
-      if(!name) return alert("Inserisci un nome valido!");
-      if(players.some(p => p.name.toLowerCase() === name.toLowerCase())) return alert("Esiste già un giocatore con questo nome!");
-      
-      players.push({ name: name, balance: startingCapital, position: 0, properties: [], consecutiveDoubles: 0, inJail: false });
-      nameInput.value = '';
-      soundSuccess();
-      logAction(`👤 Aggiunto giocatore <strong>${name}</strong> (€A ${startingCapital}).`);
-      updateUI();
-    }
-
-    function handleEnter(e) { if(e.key === 'Enter') addPlayer(); }
-
-    function assignPropertyToPlayer() {
-      const playerIdx = document.getElementById('owner-assign').value;
-      const propDbIdx = document.getElementById('prop-assign').value;
-      if(playerIdx === "" || propDbIdx === "") return alert("Seleziona giocatore e proprietà!");
-
-      const player = players[playerIdx];
-      const propInfo = propertiesDB[propDbIdx];
-
-      if(player.properties.some(p => p.name.toLowerCase() === propInfo.name.toLowerCase())) return alert("Il giocatore possiede già questa proprietà!");
-      if(player.balance < propInfo.price) {
-        alert(`${player.name} non ha abbastanza fondi. Parte un'asta automatica!`);
-        triggerAuctionForProperty(propInfo.name, propInfo.price);
-        return;
-      }
-
-      player.balance -= propInfo.price;
-      player.properties.push({ name: propInfo.name, mortgaged: false, houses: 0 });
-      soundSuccess();
-      logAction(`🏷️ <strong>${player.name}</strong> acquista <em>${propInfo.name}</em> per <strong>€A ${propInfo.price}</strong>.`);
-      updateUI();
-    }
-
-    function makeTransaction() {
-      const fromIdx = document.getElementById('from-player').value;
-      const toIdx = document.getElementById('to-player').value;
-      const amount = parseInt(document.getElementById('amount').value);
-      const reason = document.getElementById('reason').value.trim() || "Bonifico generico";
-
-      if(isNaN(amount) || amount <= 0) return alert("Inserisci un importo valido!");
-      if(fromIdx === toIdx) return alert("Mittente e destinatario coincidono!");
-
-      let fromName = "Banca", toName = "Banca";
-      if(fromIdx !== "BANK") {
-        let pFrom = players[fromIdx];
-        pFrom.balance -= amount;
-        fromName = pFrom.name;
-      }
-      if(toIdx !== "BANK") {
-        let pTo = players[toIdx];
-        pTo.balance += amount;
-        toName = pTo.name;
-      }
-
-      soundSuccess();
-      logAction(`💸 <strong>${fromName}</strong> paga <strong>€A ${amount}</strong> a <strong>${toName}</strong>.<span class="log-reason">${reason}</span>`);
-      document.getElementById('amount').value = '';
-      document.getElementById('reason').value = '';
-      updateUI();
-    }
-
-    function quickAction(type) {
-      const playerIdx = document.getElementById('quick-player').value;
-      if(playerIdx === "") return alert("Seleziona il giocatore attivo!");
-      let player = players[playerIdx];
-
-      if(type === 'via') { player.balance += 200; logAction(`🏁 <strong>${player.name}</strong> passa dal VIA (+€A 200).`); }
-      else if(type === 'tax100') { player.balance -= 100; logAction(`💸 <strong>${player.name}</strong> paga tassa (-€A 100).`); }
-      else if(type === 'tax200') { player.balance -= 200; logAction(`💸 <strong>${player.name}</strong> paga tassa (-€A 200).`); }
-      soundSuccess();
-      updateUI();
-    }
-
-    function logAction(text) {
-      document.getElementById('logs').innerHTML = `<div class="log-entry">${text}</div>` + document.getElementById('logs').innerHTML;
-    }
-
-    function setDiceFace(dieId, val) {
-      const dieEl = document.getElementById(`die${dieId}`);
-      dieEl.className = `die face-${val}`;
-      dieEl.innerHTML = '';
-      for (let i = 1; i <= 9; i++) {
-        let dot = document.createElement('div');
-        dot.className = `dot dot-${i}`;
-        dieEl.appendChild(dot);
-      }
-    }
-
-    function rollDice() {
-      const playerSelect = document.getElementById('quick-player');
-      const playerIdx = playerSelect.value;
-      if(playerIdx === "") return alert("Seleziona il giocatore attivo!");
-      let playerIndexNum = parseInt(playerIdx);
-      let player = players[playerIndexNum];
-
-      if (player.inJail) {
-        let choice = prompt(`🚨 ${player.name} è in PRIGIONE!\n1 - Paga 50 €A cauzione\n2 - Tenta la sorte con i dadi (serve doppio)`, "1");
-        if (choice === null) return;
-        if (choice.trim() === "1") {
-          if (player.balance < 50) return alert("Fondi insufficienti per la cauzione!");
-          player.balance -= 50;
-          player.inJail = false;
-          player.consecutiveDoubles = 0;
-          soundSuccess();
-          logAction(`🔓 <strong>${player.name}</strong> paga 50 €A ed esce di prigione.`);
-          updateUI();
-          return;
-        }
-      }
-
-      soundDiceRolling();
-      const die1El = document.getElementById('die1');
-      const die2El = document.getElementById('die2');
-      die1El.classList.add('rolling'); die2El.classList.add('rolling');
-      document.getElementById('dice-sum-display').innerText = "Lancio...";
-
-      setTimeout(() => {
-        die1El.classList.remove('rolling'); die2El.classList.remove('rolling');
-        let d1 = Math.floor(Math.random() * 6) + 1;
-        let d2 = Math.floor(Math.random() * 6) + 1;
-        let sum = d1 + d2;
-        let isDouble = (d1 === d2);
-
-        setDiceFace(1, d1); setDiceFace(2, d2);
-        document.getElementById('dice-sum-display').innerText = `Totale: ${sum} ${isDouble ? '⭐ (DOPPIO!)' : ''}`;
-
-        if (player.inJail) {
-          if (isDouble) {
-            player.inJail = false; player.consecutiveDoubles = 0;
-            soundSuccess();
-            logAction(`🎉 <strong>${player.name}</strong> fa doppio (${d1}-${d2}) ed esce di prigione!`);
-            alert(`Esatto! Doppio (${d1}-${d2}), sei libero!`);
-          } else {
-            soundError();
-            logAction(`🔒 <strong>${player.name}</strong> tira ${d1} e ${d2}. Resta in prigione.`);
-            alert(`Nessun doppio (${d1}-${d2}). Resti in prigione.`);
-            updateUI();
-            if (players.length > 1) {
-              let nextIdx = (playerIndexNum + 1) % players.length;
-              playerSelect.value = nextIdx;
-              logAction(`➡️ Turno a: <strong>${players[nextIdx].name}</strong>`);
-            }
+    async function startNFCReader() {
+        const statusEl = document.getElementById('nfc-status');
+        
+        if (!('NDEFReader' in window)) {
+            statusEl.innerHTML = '<span class="text-red-400">❌ Web NFC non supportato su questo browser (usa Chrome su Android).</span>';
+            logAction('Errore: Web NFC non supportato.');
             return;
-          }
         }
 
-        if (isDouble) {
-          player.consecutiveDoubles = (player.consecutiveDoubles || 0) + 1;
-          if (player.consecutiveDoubles === 3) {
-            player.consecutiveDoubles = 0; player.inJail = true; player.position = 10;
-            soundError();
-            logAction(`🚨 <strong>${player.name}</strong> fa 3 doppi e va in PRIGIONE!`);
-            alert(`Terzo doppio consecutivo! In prigione!`);
-            updateUI();
-            if (players.length > 1) {
-              let nextIdx = (playerIndexNum + 1) % players.length;
-              playerSelect.value = nextIdx;
-              logAction(`➡️ Turno a: <strong>${players[nextIdx].name}</strong>`);
-            }
-            return;
-          }
-        } else {
-          player.consecutiveDoubles = 0;
-        }
-
-        let oldPos = player.position || 0;
-        let newPos = (oldPos + sum) % 40;
-        player.position = newPos;
-        let space = boardSpaces[newPos];
-
-        if (newPos < oldPos) {
-          player.balance += 200;
-          logAction(`🏁 <strong>${player.name}</strong> passa dal VIA (+€A 200).`);
-        }
-
-        logAction(`🎲 <strong>${player.name}</strong> fa ${d1}+${d2} = ${sum}. Arrivato su <span style="color:#00bcd4;">${space.name}</span>`);
-
-        if (['property', 'station', 'utility'].includes(space.type)) {
-          let owner = null, ownerPropIdx = -1;
-          players.forEach((p) => {
-            if (p.properties) {
-              p.properties.forEach((prop, propIdx) => {
-                if (prop.name.toLowerCase() === space.name.toLowerCase()) { owner = p; ownerPropIdx = propIdx; }
-              });
-            }
-          });
-
-          if (!owner) {
-            if (player.balance >= space.price) {
-              if(confirm(`${player.name} atterra su ${space.name} (€A ${space.price}). Vuoi acquistarla?`)) {
-                player.balance -= space.price;
-                player.properties.push({ name: space.name, mortgaged: false, houses: 0 });
-                soundSuccess();
-                logAction(`🏷️ <strong>${player.name}</strong> compra ${space.name}.`);
-              } else { triggerAuctionForProperty(space.name, space.price); }
-            } else { triggerAuctionForProperty(space.name, space.price); }
-          } else if (owner.name === player.name) {
-            logAction(`ℹ️ Casella propria.`);
-          } else {
-            let propObj = owner.properties[ownerPropIdx];
-            if (!propObj.mortgaged) {
-              let rent = calculateAutoRent(space.name, owner, propObj);
-              player.balance -= rent; owner.balance += rent;
-              soundSuccess();
-              logAction(`🏠 Affitto di <strong>€A ${rent}</strong> pagato a <strong>${owner.name}</strong>.`);
-            }
-          }
-        } else if (space.type === 'tax') {
-          player.balance -= space.price;
-          soundError();
-          logAction(`💸 Tassa pagata: €A ${space.price}.`);
-        } else if (space.type === 'gotojail') {
-          player.position = 10; player.inJail = true;
-          soundError();
-          logAction(`🚨 Spedito in PRIGIONE!`);
-        }
-
-        updateUI();
-
-        if (isDouble && !player.inJail) {
-          logAction(`🔄 <strong>${player.name}</strong> fa doppio e rilancia!`);
-          alert(`Doppio! Tiri di nuovo.`);
-        } else {
-          if (players.length > 1) {
-            let nextIdx = (playerIndexNum + 1) % players.length;
-            playerSelect.value = nextIdx;
-            logAction(`➡️ Turno a: <strong>${players[nextIdx].name}</strong>`);
-          }
-        }
-      }, 400);
-    }
-
-    function calculateAutoRent(propName, owner, propObj) {
-      let dbItem = propertiesDB.find(p => p.name.toLowerCase() === propName.toLowerCase());
-      if (!dbItem) return 10;
-      if (isStationProperty(propName)) {
-        let stCount = countPlayerStations(owner);
-        return [25, 50, 100, 200][Math.min(stCount - 1, 3)] || 25;
-      }
-      let houses = propObj.houses || 0;
-      if (houses === 0) return playerOwnsFullColorGroup(owner, propName) ? dbItem.base * 2 : dbItem.base;
-      return [dbItem.c1, dbItem.c2, dbItem.c3, dbItem.c4, dbItem.hotel][houses - 1] || dbItem.base;
-    }
-
-    function triggerAuctionForProperty(propertyName) {
-      document.getElementById('auction-item').value = propertyName;
-      document.getElementById('auction-base').value = 10;
-      document.getElementById('auction-item').scrollIntoView({ behavior: 'smooth' });
-      startAuction();
-    }
-
-    function startAuction() {
-      if (players.length < 2) return alert("Servono almeno 2 giocatori!");
-      const item = document.getElementById('auction-item').value.trim() || "Proprietà";
-      currentAuction = { active: true, item: item, currentBid: 10, highestBidder: -1, timeLeft: 15, timerInterval: setInterval(auctionTick, 1000) };
-      document.getElementById('active-auction').style.display = 'block';
-      document.getElementById('auction-item').disabled = true;
-      document.getElementById('bidder-select').selectedIndex = 1;
-      updateAuctionUI();
-      logAction(`🔨 Asta avviata per <strong>${item}</strong>.`);
-    }
-
-    function updateAuctionUI() {
-      document.getElementById('current-bid').innerText = currentAuction.currentBid;
-      document.getElementById('highest-bidder').innerText = currentAuction.highestBidder >= 0 ? players[currentAuction.highestBidder].name : "Nessuno";
-      document.getElementById('auction-timer-display').innerText = currentAuction.timeLeft;
-      document.getElementById('auction-timer-display').style.color = currentAuction.timeLeft <= 5 ? "#f44336" : "#4caf50";
-    }
-
-    function rotateBidderToNext() {
-      const sel = document.getElementById('bidder-select');
-      if (sel.options.length <= 1) return;
-      sel.selectedIndex = (sel.selectedIndex + 1 >= sel.options.length) ? 1 : sel.selectedIndex + 1;
-    }
-
-    function placeBid(inc) {
-      if (!currentAuction.active) return;
-      const bIdx = document.getElementById('bidder-select').value;
-      if (bIdx === "") return alert("Seleziona chi rilancia!");
-      let newBid = inc === 0 ? 10 : currentAuction.currentBid + inc;
-      if (players[bIdx].balance < newBid) return alert("Fondi insufficienti!");
-      soundBeep();
-      currentAuction.currentBid = newBid;
-      currentAuction.highestBidder = parseInt(bIdx);
-      currentAuction.timeLeft = 15;
-      updateAuctionUI();
-      rotateBidderToNext();
-    }
-
-    function customBid() {
-      if (!currentAuction.active) return;
-      const bIdx = document.getElementById('bidder-select').value;
-      if (bIdx === "") return alert("Seleziona chi rilancia!");
-      let minB = currentAuction.currentBid + 1;
-      let amt = prompt(`Offerta minima €A ${minB}:`, minB);
-      if (amt === null) return;
-      amt = parseInt(amt);
-      if (isNaN(amt) || amt < minB || players[bIdx].balance < amt) return alert("Offerta non valida o fondi insufficienti!");
-      soundBeep();
-      currentAuction.currentBid = amt;
-      currentAuction.highestBidder = parseInt(bIdx);
-      currentAuction.timeLeft = 15;
-      updateAuctionUI();
-      rotateBidderToNext();
-    }
-
-    function auctionTick() {
-      if (!currentAuction.active) return;
-      currentAuction.timeLeft--;
-      updateAuctionUI();
-      if (currentAuction.timeLeft <= 5 && currentAuction.timeLeft > 0) soundTimerTick();
-      else if (currentAuction.timeLeft <= 0) { soundTimerEnd(); endAuctionAuto(); }
-    }
-
-    function endAuctionAuto() {
-      if (!currentAuction.active) return;
-      clearInterval(currentAuction.timerInterval);
-      currentAuction.active = false;
-      document.getElementById('active-auction').style.display = 'none';
-      document.getElementById('auction-item').disabled = false;
-
-      if (currentAuction.highestBidder >= 0) {
-        const winner = players[currentAuction.highestBidder];
-        winner.balance -= currentAuction.currentBid;
-        winner.properties.push({ name: currentAuction.item, mortgaged: false, houses: 0 });
-        soundSuccess();
-        logAction(`🔨 <strong>${winner.name}</strong> vince l'asta per <em>${currentAuction.item}</em> (€A ${currentAuction.currentBid}).`);
-        alert(`Aggiudicato a ${winner.name}!`);
-      } else { logAction(`🔨 Asta deserta.`); }
-      updateUI();
-    }
-
-    function endAuctionEarly() { if(confirm("Terminare l'asta?")) endAuctionAuto(); }
-
-    function updatePropertyInfo() { calculateRent(); }
-    function calculateRent() {
-      const propIdx = document.getElementById('calc-property').value;
-      const level = document.getElementById('calc-level').value;
-      if (propIdx === "") { document.getElementById('calc-result-display').innerText = "€A 0"; return; }
-      let propData = propertiesDB[propIdx], rent = 0;
-      if (isStationProperty(propData.name)) {
-        rent = level.includes('double') || level === 'station2' ? 50 : level === 'station3' ? 100 : level === 'station4' ? 200 : 25;
-      } else {
-        rent = level === 'double' ? propData.base * 2 : level === 'c1' ? propData.c1 : level === 'c2' ? propData.c2 : level === 'c3' ? propData.c3 : level === 'c4' ? propData.c4 : level === 'hotel' ? propData.hotel : propData.base;
-      }
-      document.getElementById('calc-result-display').innerText = `€A ${rent}`;
-    }
-
-    function applyCalculatedRent() {
-      const tenantIdx = document.getElementById('calc-tenant').value;
-      const ownerIdx = document.getElementById('calc-owner').value;
-      let rentAmount = parseInt(document.getElementById('calc-result-display').innerText.replace('€A', '').trim());
-      if (tenantIdx === "" || ownerIdx === "" || tenantIdx === ownerIdx) return alert("Seleziona inquilino e proprietario validi!");
-      
-      let tenant = players[tenantIdx], owner = players[ownerIdx];
-      tenant.balance -= rentAmount; owner.balance += rentAmount;
-      soundSuccess();
-      logAction(`🏠 Affitto di €A ${rentAmount} pagato da <strong>${tenant.name}</strong> a <strong>${owner.name}</strong>.`);
-      updateUI();
-      alert("Affitto pagato!");
-    }
-
-    function addHouse(playerIdx, propIdx) {
-      let player = players[playerIdx], prop = player.properties[propIdx];
-      let dbItem = propertiesDB.find(d => d.name.toLowerCase() === prop.name.toLowerCase());
-      if (!dbItem || dbItem.houseCost === 0) return alert("Impossibile costruire qui!");
-      if (prop.mortgaged) return alert("Proprietà ipotecata!");
-      if (!playerOwnsFullColorGroup(player, prop.name)) return alert("Il giocatore non possiede l'intero gruppo di colore!");
-      
-      let currentHouses = prop.houses || 0;
-      if (currentHouses >= 5) return alert("Già presente 1 albergo!");
-      if (player.balance < dbItem.houseCost) return alert("Fondi insufficienti!");
-
-      player.balance -= dbItem.houseCost;
-      prop.houses = currentHouses + 1;
-      soundSuccess();
-      logAction(`🏗️ <strong>${player.name}</strong> costruisce su <em>${prop.name}</em>.`);
-      updateUI();
-    }
-
-    function removeHouse(playerIdx, propIdx) {
-      let player = players[playerIdx], prop = player.properties[propIdx];
-      let dbItem = propertiesDB.find(d => d.name.toLowerCase() === prop.name.toLowerCase());
-      if (!dbItem || (prop.houses || 0) === 0) return alert("Nessun edificio da vendere!");
-      
-      let refund = Math.floor(dbItem.houseCost / 2);
-      player.balance += refund;
-      prop.houses -= 1;
-      soundSuccess();
-      logAction(`🔄 <strong>${player.name}</strong> vende un edificio su <em>${prop.name}</em> (+€A ${refund}).`);
-      updateUI();
-    }
-
-    function toggleMortgage(playerIdx, propIdx) {
-      let player = players[playerIdx], prop = player.properties[propIdx];
-      let dbItem = propertiesDB.find(d => d.name.toLowerCase() === prop.name.toLowerCase());
-      if (!dbItem) return;
-
-      if (!prop.mortgaged) {
-        if (prop.houses > 0) return alert("Vendi prima le case!");
-        let mVal = dbItem.mortgage || Math.floor(dbItem.price / 2);
-        prop.mortgaged = true; player.balance += mVal;
-        soundSuccess();
-        logAction(`🏦 <strong>${player.name}</strong> ipoteca <em>${prop.name}</em> (+€A ${mVal}).`);
-      } else {
-        let mVal = dbItem.mortgage || Math.floor(dbItem.price / 2);
-        let cost = Math.round(mVal * 1.10);
-        if (player.balance < cost) return alert(`Fondi insufficienti per svincolare (€A ${cost})!`);
-        player.balance -= cost; prop.mortgaged = false;
-        soundSuccess();
-        logAction(`🔓 <strong>${player.name}</strong> svincola <em>${prop.name}</em> (-€A ${cost}).`);
-      }
-      updateUI();
-    }
-
-    function removeProperty(playerIdx, propIdx) {
-      let player = players[playerIdx], prop = player.properties[propIdx];
-      if (confirm(`Rimuovere ${prop.name} da ${player.name}?`)) {
-        player.properties.splice(propIdx, 1);
-        soundSuccess();
-        logAction(`❌ Rimossa proprietà <em>${prop.name}</em>.`);
-        updateUI();
-      }
-    }
-
-    /* GESTIONE FOTOCAMERA QR CODE */
-    function startScanner() {
-      const r = document.getElementById('reader');
-      if (r.style.display === 'none') {
-        r.style.display = 'block';
-        if (!html5QrcodeScanner) {
-          html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
-        }
-        html5QrcodeScanner.render(onScanSuccess, onScanFailure);
-      } else {
-        stopScanner();
-      }
-    }
-
-    function stopScanner() {
-      const r = document.getElementById('reader');
-      r.style.display = 'none';
-      if (html5QrcodeScanner) {
-        html5QrcodeScanner.clear().catch(error => { console.error("Errore durante la chiusura dello scanner.", error); });
-      }
-    }
-
-    function onScanSuccess(decodedText) {
-      stopScanner();
-      soundSuccess();
-      processScannedCard(decodedText);
-    }
-
-    function onScanFailure(error) {}
-
-    /* GESTIONE LETTORE NFC NATIVO (WEB NFC API) */
-    async function startNFCScanner() {
-      if ('NDEFReader' in window) {
         try {
-          const ndef = new NDEFReader();
-          await ndef.scan();
-          logAction(`📡 <strong>Lettore NFC Attivo:</strong> Avvicina la carta al telefono...`);
-          alert("NFC Attivo! Avvicina la tesserina o la carta al retro dello smartphone.");
+            statusEl.innerHTML = '<span class="text-amber-400 animate-pulse">📡 Lettura NFC attiva... Avvicina la carta contratto.</span>';
+            logAction('Scanner NFC avviato in attesa di tag...');
 
-          ndef.addEventListener("reading", ({ message, serialNumber }) => {
-            soundSuccess();
-            let textDecoder = new TextDecoder();
-            let scannedData = "";
+            const ndef = new NDEFReader();
+            await ndef.scan();
 
-            for (const record of message.records) {
-              if (record.recordType === "text") {
-                scannedData = textDecoder.decode(record.data);
-              }
-            }
-
-            if (!scannedData) scannedData = `Tag ID: ${serialNumber}`;
-            processScannedCard(scannedData);
-          });
-        } catch (error) {
-          soundError();
-          alert("Errore nell'avvio dell'NFC: " + error);
-        }
-      } else {
-        soundError();
-        alert("Il tuo telefono o il browser (Chrome Android) non supporta la lettura Web NFC.");
-      }
-    }
-
-    /* PROCESSO AUTOMATICO SCANSIONE CARTA (PROPRIETA' / GIOCATORE) */
-    function processScannedCard(scannedText) {
-      let cleanText = scannedText.trim();
-      let foundProp = propertiesDB.find(p => p.name.toLowerCase() === cleanText.toLowerCase());
-      let foundPlayer = players.find(p => p.name.toLowerCase() === cleanText.toLowerCase());
-
-      if (foundPlayer) {
-        // Se scansiona la carta di un giocatore, selezionalo come attivo
-        let pIndex = players.indexOf(foundPlayer);
-        document.getElementById('quick-player').value = pIndex;
-        soundSuccess();
-        logAction(`👤 <strong>NFC Giocatore:</strong> Selezionato ${foundPlayer.name}`);
-        alert(`Giocatore attivo impostato su: ${foundPlayer.name}`);
-        return;
-      }
-
-      if (foundProp) {
-        // Cerca se la proprietà ha già un proprietario
-        let owner = null, propObj = null;
-        let ownerIndex = -1;
-        players.forEach((p, pIdx) => {
-          if (p.properties) {
-            p.properties.forEach(pr => {
-              if (pr.name.toLowerCase() === foundProp.name.toLowerCase()) {
-                owner = p;
-                ownerIndex = pIdx;
-                propObj = pr;
-              }
+            ndef.addEventListener("reading", ({ message, serialNumber }) => {
+                logAction(`Tag NFC rilevato! (UID: ${serialNumber || 'N/D'})`);
+                
+                for (const record of message.records) {
+                    if (record.recordType === "text") {
+                        const textDecoder = new TextDecoder(record.encoding || 'utf-8');
+                        const scannedText = textDecoder.decode(record.data);
+                        parseNFCData(scannedText);
+                        break;
+                    }
+                }
             });
-          }
-        });
-
-        let activePlayerIdx = document.getElementById('quick-player').value;
-        let activePlayer = activePlayerIdx !== "" ? players[activePlayerIdx] : null;
-
-        showInteractiveCardModal(foundProp, owner, ownerIndex, propObj, activePlayer);
-      } else {
-        // Carta generica o QR di imprevisti/probabilità
-        showGenericCardModal(cleanText);
-      }
+        } catch (error) {
+            statusEl.innerHTML = `<span class="text-red-400">Errore NFC: ${error.message}</span>`;
+            logAction(`Errore NFC: ${error.message}`);
+        }
     }
 
-    function showInteractiveCardModal(prop, owner, ownerIndex, propObj, activePlayer) {
-      const modal = document.getElementById('qr-modal');
-      const titleEl = document.getElementById('modal-card-title');
-      const bodyEl = document.getElementById('modal-card-body');
-      const actionsEl = document.getElementById('modal-actions');
+    function parseNFCData(scannedData) {
+        let cardInfo = null;
 
-      titleEl.innerText = prop.name;
-      titleEl.style.color = colorGroupColors[prop.name] || '#ffeb3b';
-
-      let ownerText = owner ? `<strong>Proprietario:</strong> ${owner.name}` : `<span style="color:#4caf50;">Disponibile (Non acquistata)</span>`;
-      let detailsHtml = `
-        <strong>Tipo:</strong> ${isStationProperty(prop.name) ? 'Stazione / Bus' : 'Terreno'}<br>
-        <strong>Prezzo d'acquisto:</strong> €A ${prop.price}<br>
-        ${ownerText}
-      `;
-      bodyEl.innerHTML = detailsHtml;
-      actionsEl.innerHTML = '';
-
-      if (!owner) {
-        // PROPRIETA' LIBERA -> OFFERTE ACQUISTO O ASTA
-        if (activePlayer) {
-          actionsEl.innerHTML += `<button onclick="buyScannedProperty('${prop.name}', ${prop.price})" style="background:#4caf50;">Acquista (${activePlayer.name} - €A ${prop.price})</button>`;
+        try {
+            // Tenta di interpretare il payload come JSON strutturato
+            cardInfo = JSON.parse(scannedData);
+            logAction(`Dati JSON decodificati con successo per: ${cardInfo.name}`);
+        } catch (e) {
+            // Fallback: se è testo semplice, cerca nel database integrato
+            logAction(`Testo semplice rilevato: "${scannedData}". Ricerca nel DB...`);
+            cardInfo = propertiesDB.find(p => p.name.toLowerCase() === scannedData.toLowerCase().trim());
         }
-        actionsEl.innerHTML += `<button onclick="startAuctionFromScan('${prop.name}')" style="background:#ff9800; color:#000;">Metti all'Asta 🔨</button>`;
-      } else if (activePlayer && owner.name === activePlayer.name) {
-        actionsEl.innerHTML += `<div style="text-align:center; color:#00bcd4; font-weight:bold; padding:8px;">Questa proprietà è tua!</div>`;
-      } else if (activePlayer) {
-        // PROPRIETA' DI ALTRI -> CALCOLO AUTOMATICO AFFITTO E POS
-        let rent = calculateAutoRent(prop.name, owner, propObj);
-        bodyEl.innerHTML += `<br><br><div style="background:#2a2a2a; padding:8px; border-radius:6px; text-align:center;">
-          Affitto dovuto: <strong style="color:#ffeb3b; font-size:1.2rem;">€A ${rent}</strong>
-        </div>`;
-        actionsEl.innerHTML += `<button onclick="payRentViaPOS(${activePlayerIdx}, ${ownerIndex}, ${rent}, '${prop.name}')" style="background:#2196f3;">Paga Affitto con POS 📡</button>`;
-      }
 
-      logAction(`📷 <strong>Letto Carta:</strong> ${prop.name}`);
-      modal.style.display = 'flex';
+        if (cardInfo) {
+            displayFullCardDetails(cardInfo);
+            document.getElementById('nfc-status').innerHTML = `<span class="text-green-400">✅ Letta con successo: ${cardInfo.name}</span>`;
+        } else {
+            showGenericCardModal(scannedData);
+            document.getElementById('nfc-status').innerHTML = `<span class="text-amber-400">⚠️ Letto testo non censito: ${scannedData}</span>`;
+        }
+    }
+
+    function displayFullCardDetails(card) {
+        const modal = document.getElementById('qr-modal');
+        const titleEl = document.getElementById('modal-card-title');
+        const badgeEl = document.getElementById('modal-card-badge');
+        const bodyEl = document.getElementById('modal-card-body');
+
+        titleEl.innerText = card.name;
+        
+        let isStation = card.type === 'station';
+        badgeEl.innerText = isStation ? '🚌 Stazione / Bus' : '🏠 Terreno / Proprietà';
+
+        let bodyContent = `
+            <div class="flex justify-between"><span>Prezzo d'Acquisto:</span> <strong class="text-amber-400">€A ${card.price}</strong></div>
+        `;
+
+        if (!isStation) {
+            bodyContent += `
+                <div class="flex justify-between"><span>Costo Casa/Albergo:</span> <strong>€A ${card.houseCost}</strong></div>
+                <div class="flex justify-between"><span>Affitto Base:</span> <strong>€A ${card.base}</strong></div>
+                <div class="flex justify-between"><span>Con 1 Casa:</span> <strong>€A ${card.c1}</strong></div>
+                <div class="flex justify-between"><span>Con 2 Case:</span> <strong>€A ${card.c2}</strong></div>
+                <div class="flex justify-between"><span>Con 3 Case:</span> <strong>€A ${card.c3}</strong></div>
+                <div class="flex justify-between"><span>Con 4 Case:</span> <strong>€A ${card.c4}</strong></div>
+                <div class="flex justify-between"><span>Con Albergo:</span> <strong>€A ${card.hotel}</strong></div>
+            `;
+        } else {
+            bodyContent += `
+                <div class="flex justify-between"><span>Affitto 1 Stazione:</span> <strong>€A ${card.base}</strong></div>
+                <div class="flex justify-between"><span>Affitto 2 Stazioni:</span> <strong>€A ${card.base * 2}</strong></div>
+            `;
+        }
+
+        bodyContent += `<div class="flex justify-between border-t border-slate-800 pt-2 mt-2"><span>Valore Ipoteca:</span> <strong class="text-red-400">€A ${card.mortgage}</strong></div>`;
+
+        bodyEl.innerHTML = bodyContent;
+        modal.style.display = 'flex';
     }
 
     function showGenericCardModal(text) {
-      const modal = document.getElementById('qr-modal');
-      document.getElementById('modal-card-title').innerText = "Carta Scansionata";
-      document.getElementById('modal-card-body').innerHTML = `<strong>Contenuto:</strong><br>${text}`;
-      document.getElementById('modal-actions').innerHTML = '';
-      modal.style.display = 'flex';
-      logAction(`📷 <strong>Scansione:</strong> ${text}`);
+        const modal = document.getElementById('qr-modal');
+        document.getElementById('modal-card-title').innerText = text;
+        document.getElementById('modal-card-badge').innerText = 'Tag Generico';
+        document.getElementById('modal-card-body').innerHTML = `<p class="py-4 text-center text-slate-400">Contenuto letto dal tag NFC:<br><code class="text-white font-mono">${text}</code></p>`;
+        modal.style.display = 'flex';
     }
 
-    function buyScannedProperty(propName, price) {
-      let activePlayerIdx = document.getElementById('quick-player').value;
-      if (activePlayerIdx === "") return alert("Seleziona prima un giocatore attivo!");
-      let player = players[activePlayerIdx];
-
-      if (player.balance < price) {
-        alert("Fondi insufficienti! Parte l'asta automatica.");
-        closeCardModal();
-        triggerAuctionForProperty(propName, price);
-        return;
-      }
-
-      player.balance -= price;
-      player.properties.push({ name: propName, mortgaged: false, houses: 0 });
-      soundSuccess();
-      logAction(`🏷️ <strong>${player.name}</strong> acquista <em>${propName}</em> tramite scansione per <strong>€A ${price}</strong>.`);
-      updateUI();
-      closeCardModal();
-      alert(`Acquisto completato per ${player.name}!`);
+    function closeModal() {
+        document.getElementById('qr-modal').style.display = 'none';
     }
 
-    function startAuctionFromScan(propName) {
-      closeCardModal();
-      triggerAuctionForProperty(propName);
+    function simulateDemoCard() {
+        // Simulazione di una lettura JSON di un contratto reale
+        const sampleJson = JSON.stringify({
+            name: "Rione 167",
+            type: "property",
+            price: 60,
+            houseCost: 50,
+            base: 2,
+            c1: 10,
+            c2: 30,
+            c3: 90,
+            c4: 160,
+            hotel: 250,
+            mortgage: 30
+        });
+        logAction('Simulata lettura tag JSON (Demo)');
+        parseNFCData(sampleJson);
     }
-
-    function payRentViaPOS(tenantIdx, ownerIdx, rentAmount, propName) {
-      let tenant = players[tenantIdx];
-      let owner = players[ownerIdx];
-
-      if (tenant.balance < rentAmount) {
-        soundError();
-        return alert(`${tenant.name} non ha abbastanza fondi per pagare l'affitto di €A ${rentAmount}!`);
-      }
-
-      tenant.balance -= rentAmount;
-      owner.balance += rentAmount;
-
-      soundSuccess();
-      logAction(`💳 <strong>POS Contactless:</strong> <strong>${tenant.name}</strong> ha pagato <strong>€A ${rentAmount}</strong> a <strong>${owner.name}</strong> per l'affitto di <em>${propName}</em>.`);
-      updateUI();
-      closeCardModal();
-      alert(`Pagamento POS riuscito!\n€A ${rentAmount} trasferiti da ${tenant.name} a ${owner.name}.`);
-    }
-
-    function closeCardModal() {
-      document.getElementById('qr-modal').style.display = 'none';
-    }
-
-    /* MODALITA' POS CONTACTLESS MANUALE DAL CALCOLATORE */
-    async function startNFC_POS_Payment(amount, ownerIdx, reasonText) {
-      if ('NDEFReader' in window) {
-        try {
-          const ndef = new NDEFReader();
-          await ndef.scan();
-          alert(`POS Contactless Attivo! Inquilino: avvicina la carta NFC per pagare €A ${amount}`);
-          logAction(`📡 <strong>POS Attivo:</strong> In attesa di lettura carta per €A ${amount}...`);
-
-          ndef.addEventListener("reading", ({ message, serialNumber }) => {
-            let textDecoder = new TextDecoder();
-            let scannedText = "";
-            for (const record of message.records) {
-              if (record.recordType === "text") scannedText = textDecoder.decode(record.data);
-            }
-            if (!scannedText) scannedText = serialNumber;
-
-            let tenantIdx = players.findIndex(p => p.name.toLowerCase() === scannedText.toLowerCase().trim());
-            if (tenantIdx !== -1) {
-              let tenant = players[tenantIdx];
-              let owner = players[ownerIdx];
-
-              if (tenantIdx === parseInt(ownerIdx)) {
-                soundError();
-                return alert("Il proprietario non può pagare l'affitto a se stesso!");
-              }
-              if (tenant.balance < amount) {
-                soundError();
-                return alert(`Fondi insufficienti per ${tenant.name}! Saldo: €A ${tenant.balance}`);
-              }
-
-              tenant.balance -= amount;
-              owner.balance += amount;
-
-              soundSuccess();
-              logAction(`💳 <strong>POS Contactless:</strong> <strong>${tenant.name}</strong> ha pagato <strong>€A ${amount}</strong> a <strong>${owner.name}</strong>.<span class="log-reason">${reasonText}</span>`);
-              updateUI();
-              alert(`Pagamento POS riuscito!\n€A ${amount} pagati da ${tenant.name} a ${owner.name}.`);
-            } else {
-              soundError();
-              alert(`Carta NFC non riconosciuta: "${scannedText}"`);
-            }
-          });
-        } catch (error) {
-          soundError();
-          alert("Errore POS NFC: " + error);
-        }
-      } else {
-        alert("NFC non supportato su questo browser (usa Chrome su Android).");
-      }
-    }
-
-    function triggerPOSFromCalculator() {
-      const ownerIdx = document.getElementById('calc-owner').value;
-      let rentAmount = parseInt(document.getElementById('calc-result-display').innerText.replace('€A', '').trim());
-      let propSelect = document.getElementById('calc-property');
-      let propName = propSelect.selectedIndex > 0 ? propSelect.options[propSelect.selectedIndex].text : "Affitto";
-
-      if (ownerIndexCheck = ownerIdx === "") return alert("Seleziona il proprietario che deve ricevere il pagamento!");
-      if (isNaN(rentAmount) || rentAmount <= 0) return alert("Importo non valido!");
-
-      startNFC_POS_Payment(rentAmount, ownerIdx, `Affitto casella: ${propName}`);
-    }
-  </script>
-</body>
-</html>
+</script>
