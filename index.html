@@ -1334,3 +1334,1408 @@
   </script>
 </body>
 </html>
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Monopoly POS Bancomat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        display: ['Orbitron', 'sans-serif'],
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        mono: {
+                            red: '#e63946',
+                            green: '#2a9d8f',
+                            blue: '#1d3557',
+                            gold: '#ffb703',
+                            bg: '#0f172a',
+                            card: '#1e293b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        .pos-screen-glow {
+            box-shadow: inset 0 0 15px rgba(0, 255, 170, 0.15);
+        }
+        .btn-press:active {
+            transform: scale(0.95);
+        }
+        /* Custom scrollbar for transaction history */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-mono-bg text-slate-100 font-sans min-h-screen flex flex-col justify-between overflow-x-hidden select-none">
+
+    <header class="bg-slate-900 border-b border-slate-800 p-3 px-4 flex justify-between items-center sticky top-0 z-30 shadow-lg">
+        <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center shadow-md shadow-emerald-500/20">
+                <i class="fa-solid font-bold text-slate-950 text-lg">M</i>
+            </div>
+            <div>
+                <h1 class="font-display font-black text-lg tracking-wider text-white leading-none">MONOPOLY</h1>
+                <p class="text-[10px] tracking-widest text-emerald-400 font-semibold uppercase">Super Bank POS</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button onclick="openSetupModal()" class="btn-press bg-slate-800 hover:bg-slate-700 text-slate-300 p-2 rounded-lg text-sm flex items-center gap-1.5 border border-slate-700">
+                <i class="fa-solid fa-users-gear text-emerald-400"></i>
+                <span class="text-xs font-semibold">Giocatori</span>
+            </button>
+            <button onclick="toggleAudio()" id="audio-toggle-btn" class="btn-press bg-slate-800 text-emerald-400 p-2 rounded-lg text-sm border border-slate-700">
+                <i class="fa-solid fa-volume-high"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-md w-full mx-auto p-3 flex flex-col gap-3 justify-between">
+
+        <!-- Top Display Screen -->
+        <section class="bg-slate-900 rounded-2xl p-4 border-2 border-slate-700/80 pos-screen-glow relative overflow-hidden shadow-2xl">
+            <div class="flex justify-between items-center text-xs text-slate-400 font-mono mb-1">
+                <span id="pos-status-text" class="text-emerald-400 font-bold tracking-wider flex items-center gap-1">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> PRONTO
+                </span>
+                <span id="pos-clock">00:00</span>
+            </div>
+
+            <!-- Transaction Display -->
+            <div class="text-right my-2">
+                <div id="pos-subtext" class="text-xs text-slate-400 min-h-[16px] truncate">Seleziona Pagatore</div>
+                <div class="flex items-baseline justify-end gap-1 my-1">
+                    <span class="text-xl font-bold text-emerald-400 font-display">M</span>
+                    <span id="pos-amount-display" class="font-display text-4xl font-extrabold tracking-tight text-white">0</span>
+                </div>
+            </div>
+
+            <!-- Transaction Flow Visualizer -->
+            <div class="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-800">
+                <div id="payer-box" onclick="setSelectMode('payer')" class="bg-slate-800/80 p-2.5 rounded-xl border border-slate-700 text-left transition-all cursor-pointer hover:border-slate-500">
+                    <div class="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Chi Paga</div>
+                    <div id="payer-name" class="font-bold text-sm text-slate-200 truncate mt-0.5">-- Scegli --</div>
+                </div>
+                <div id="payee-box" onclick="setSelectMode('payee')" class="bg-slate-800/80 p-2.5 rounded-xl border border-slate-700 text-left transition-all cursor-pointer hover:border-slate-500">
+                    <div class="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Chi Riceve</div>
+                    <div id="payee-name" class="font-bold text-sm text-slate-200 truncate mt-0.5">-- Scegli --</div>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <div class="flex justify-between items-center mb-1.5 px-1">
+                <span id="selection-prompt" class="text-xs font-bold text-slate-300 uppercase tracking-wider">1. Seleziona Giocatore</span>
+                <span class="text-[10px] text-slate-500">Tocca la tessera</span>
+            </div>
+            <div id="players-grid" class="grid grid-cols-2 gap-2">
+                <!-- Players inserted dynamically -->
+            </div>
+        </section>
+
+        <section class="bg-slate-900 rounded-2xl p-3 border border-slate-800 shadow-xl">
+            <!-- Quick Shortcuts Bar -->
+            <div class="grid grid-cols-3 gap-2 mb-2">
+                <button onclick="handleQuickPassVIA()" class="btn-press bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/60 font-bold p-2.5 rounded-xl text-xs flex flex-col items-center justify-center gap-1 shadow-md">
+                    <i class="fa-solid fa-flag-checkered text-emerald-400 text-sm"></i>
+                    <span>+200 VIA</span>
+                </button>
+                <button onclick="setAmount('100')" class="btn-press bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold p-2.5 rounded-xl text-xs">
+                    M 100
+                </button>
+                <button onclick="setAmount('500')" class="btn-press bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold p-2.5 rounded-xl text-xs">
+                    M 500
+                </button>
+            </div>
+
+            <!-- Numpad -->
+            <div class="grid grid-cols-3 gap-2 font-display text-lg">
+                <button onclick="appendNum('1')" class="btn-press bg-slate-800 hover:bg-slate-700 text-white font-bold p-3 rounded-xl border border-slate-700/60 shadow">1</button>
+                <button onclick="appendNum('2')" class="btn-press bg-slate-800 hover:bg-slate-700 text-white font-bold p-3 rounded-xl border border-slate-700/60 shadow">2</button>
+                <button onclick="appendNum('3')" class="btn-press bg-slate-800 hover:bg-slate-700 text-white font-bold p-3 rounded-xl border border-slate-700/60 shadow">3</button>
+                
+                <button onclick="appendNum('4')" class="btn-press bg-slate-800 hover:bg-slate-700 text-white font-bold p-3 rounded-xl border border-slate-700/60 shadow">4</button>
+                <button onclick="appendNum('5')" class="btn-press bg-slate-800 hover:bg-slate-700 text-white font-bold p-3 rounded-xl border border-slate-700/60 shadow">5</button>
+                <button onclick="appendNum('6')" class="btn-press bg-slate-800 hover:bg-slate-700 text-white font-bold p-3 rounded-xl border border-slate-700/60 shadow">6</button>
+                
+                <button onclick="appendNum('7')" class="btn-press bg-slate-800 hover:bg-slate-700 text-white font-bold p-3 rounded-xl border border-slate-700/60 shadow">7</button>
+                <button onclick="appendNum('8')" class="btn-press bg-slate-800 hover:bg-slate-700 text-white font-bold p-3 rounded-xl border border-slate-700/60 shadow">8</button>
+                <button onclick="appendNum('9')" class="btn-press bg-slate-800 hover:bg-slate-700 text-white font-bold p-3 rounded-xl border border-slate-700/60 shadow">9</button>
+                
+                <button onclick="clearAmount()" class="btn-press bg-rose-950/60 hover:bg-rose-900 text-rose-300 font-bold p-3 rounded-xl border border-rose-800/50 text-sm flex items-center justify-center">
+                    C
+                </button>
+                <button onclick="appendNum('0')" class="btn-press bg-slate-800 hover:bg-slate-700 text-white font-bold p-3 rounded-xl border border-slate-700/60 shadow">0</button>
+                <button onclick="appendNum('00')" class="btn-press bg-slate-800 hover:bg-slate-700 text-white font-bold p-3 rounded-xl border border-slate-700/60 shadow text-base">00</button>
+            </div>
+
+            <!-- Execute Transaction Button -->
+            <button onclick="executeTransaction()" class="btn-press w-full mt-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black p-3.5 rounded-xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 text-base uppercase tracking-wider">
+                <i class="fa-solid fa-credit-card text-lg"></i> CONFERMA PAGAMENTO
+            </button>
+        </section>
+
+        <section class="bg-slate-900/90 rounded-xl p-3 border border-slate-800">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="fa-solid fa-clock-rotate-left text-slate-500"></i> Storico Movimenti
+                </span>
+                <button onclick="undoLastTransaction()" id="undo-btn" class="btn-press text-[11px] text-amber-400 hover:text-amber-300 font-semibold disabled:opacity-30 disabled:pointer-events-none flex items-center gap-1 bg-amber-950/40 px-2 py-1 rounded border border-amber-800/40" disabled>
+                    <i class="fa-solid fa-rotate-left"></i> Annulla Ultima
+                </button>
+            </div>
+            <div id="history-list" class="max-h-28 overflow-y-auto space-y-1.5 pr-1 text-xs">
+                <div class="text-slate-600 text-center py-2 italic text-[11px]">Nessuna operazione registrata</div>
+            </div>
+        </section>
+
+    </main>
+
+    <div id="setup-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-5 shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+                <h2 class="text-lg font-bold font-display text-white flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-emerald-400"></i> Impostazioni Partita
+                </h2>
+                <button onclick="closeSetupModal()" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="py-4 overflow-y-auto space-y-4 flex-1">
+                <!-- Initial Money Setting -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1.5">Saldo Iniziale Giocatori (M)</label>
+                    <input type="number" id="initial-money-input" value="1500" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white font-bold font-display focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <!-- Players List Configuration -->
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="text-xs font-bold text-slate-400 uppercase">Giocatori in Gioco</label>
+                        <button onclick="addNewPlayerInput()" class="text-xs text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1">
+                            <i class="fa-solid fa-plus"></i> Aggiungi
+                        </button>
+                    </div>
+                    <div id="player-inputs-container" class="space-y-2">
+                        <!-- Inputs inserted by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 flex gap-2">
+                <button onclick="resetGame()" class="btn-press bg-rose-950 hover:bg-rose-900 text-rose-300 font-bold px-4 py-3 rounded-xl text-xs border border-rose-800/60">
+                    Nuova Partita
+                </button>
+                <button onclick="saveSetup()" class="btn-press flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 rounded-xl text-xs uppercase tracking-wider">
+                    Salva e Salva Saldi
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Player Colors Presets
+        const COLOR_PRESETS = [
+            { name: 'Rosso', bg: 'bg-red-600', text: 'text-red-400', border: 'border-red-500', hex: '#ef4444' },
+            { name: 'Blu', bg: 'bg-blue-600', text: 'text-blue-400', border: 'border-blue-500', hex: '#3b82f6' },
+            { name: 'Verde', bg: 'bg-emerald-600', text: 'text-emerald-400', border: 'border-emerald-500', hex: '#10b981' },
+            { name: 'Giallo', bg: 'bg-amber-500', text: 'text-amber-400', border: 'border-amber-500', hex: '#f59e0b' },
+            { name: 'Viola', bg: 'bg-purple-600', text: 'text-purple-400', border: 'border-purple-500', hex: '#a855f7' },
+            { name: 'Arancio', bg: 'bg-orange-500', text: 'text-orange-400', border: 'border-orange-500', hex: '#f97316' },
+        ];
+
+        // Bank special entity
+        const BANK_ENTITY = { id: 'BANK', name: 'BANCA', color: { bg: 'bg-slate-700', text: 'text-slate-300', border: 'border-slate-600', hex: '#64748b' } };
+
+        // Global State Variables
+        let players = [];
+        let payerId = null;
+        let payeeId = null;
+        let currentAmountStr = "0";
+        let selectMode = 'payer'; // 'payer' or 'payee'
+        let history = [];
+        let audioEnabled = true;
+
+        // Web Audio API Context
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        // Synth Sound FX Generators
+        function playBeep(freq = 800, type = 'sine', duration = 0.08) {
+            if (!audioEnabled) return;
+            try {
+                initAudio();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) {
+                console.log("Audio not allowed yet");
+            }
+        }
+
+        function playSuccessSound() {
+            if (!audioEnabled) return;
+            playBeep(523.25, 'triangle', 0.08); // C5
+            setTimeout(() => playBeep(659.25, 'triangle', 0.08), 80); // E5
+            setTimeout(() => playBeep(783.99, 'triangle', 0.15), 160); // G5
+        }
+
+        function playErrorSound() {
+            if (!audioEnabled) return;
+            playBeep(220, 'sawtooth', 0.12);
+            setTimeout(() => playBeep(180, 'sawtooth', 0.2), 100);
+        }
+
+        function toggleAudio() {
+            audioEnabled = !audioEnabled;
+            const btn = document.getElementById('audio-toggle-btn');
+            if (audioEnabled) {
+                btn.classList.replace('text-slate-500', 'text-emerald-400');
+                playBeep(1000, 'sine', 0.05);
+            } else {
+                btn.classList.replace('text-emerald-400', 'text-slate-500');
+            }
+        }
+
+        // Clock display
+        function updateClock() {
+            const now = new Date();
+            const hrs = String(now.getHours()).padStart(2, '0');
+            const mins = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('pos-clock').textContent = `${hrs}:${mins}`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        window.onload = function() {
+            loadDefaultPlayers();
+            renderPlayers();
+            updateDisplay();
+        };
+
+        function loadDefaultPlayers() {
+            players = [
+                { id: 'p1', name: 'Giocatore 1', balance: 1500, color: COLOR_PRESETS[0] },
+                { id: 'p2', name: 'Giocatore 2', balance: 1500, color: COLOR_PRESETS[1] },
+                { id: 'p3', name: 'Giocatore 3', balance: 1500, color: COLOR_PRESETS[2] },
+                { id: 'p4', name: 'Banca', balance: 999999, isBank: true, color: BANK_ENTITY.color }
+            ];
+        }
+
+        // Render Player Selection Grid
+        function renderPlayers() {
+            const grid = document.getElementById('players-grid');
+            grid.innerHTML = '';
+
+            players.forEach(p => {
+                const isPayer = p.id === payerId;
+                const isPayee = p.id === payeeId;
+
+                let stateClasses = 'bg-slate-900/90 border-slate-800 text-slate-300';
+                if (isPayer) {
+                    stateClasses = 'bg-rose-950/60 border-rose-500 text-rose-200 ring-2 ring-rose-500/50';
+                } else if (isPayee) {
+                    stateClasses = 'bg-emerald-950/60 border-emerald-500 text-emerald-200 ring-2 ring-emerald-500/50';
+                }
+
+                const card = document.createElement('div');
+                card.className = `btn-press p-3 rounded-xl border flex flex-col justify-between cursor-pointer transition-all ${stateClasses}`;
+                card.onclick = () => selectPlayer(p.id);
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-1.5 min-w-0">
+                            <span class="w-2.5 h-2.5 rounded-full ${p.color.bg} shrink-0"></span>
+                            <span class="font-bold text-xs truncate">${p.name}</span>
+                        </div>
+                        ${isPayer ? '<span class="text-[9px] bg-rose-500/20 text-rose-300 px-1.5 py-0.5 rounded font-black uppercase">Paga</span>' : ''}
+                        ${isPayee ? '<span class="text-[9px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded font-black uppercase">Riceve</span>' : ''}
+                    </div>
+                    <div class="mt-2 text-right">
+                        <span class="text-[10px] text-slate-500 font-mono">SALDO</span>
+                        <div class="font-display font-black text-sm ${p.isBank ? 'text-slate-400' : 'text-white'}">
+                            ${p.isBank ? '∞' : 'M ' + p.balance.toLocaleString('it-IT')}
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Player Selection Logic
+        function selectPlayer(id) {
+            playBeep(600, 'sine', 0.05);
+
+            if (selectMode === 'payer') {
+                if (payeeId === id) payeeId = null; // Can't be both
+                payerId = (payerId === id) ? null : id;
+                selectMode = 'payee'; // Auto advance to next step
+            } else {
+                if (payerId === id) payerId = null; // Can't be both
+                payeeId = (payeeId === id) ? null : id;
+            }
+
+            renderPlayers();
+            updateDisplay();
+        }
+
+        function setSelectMode(mode) {
+            playBeep(700, 'sine', 0.04);
+            selectMode = mode;
+            updateDisplay();
+        }
+
+        // Numpad Logic
+        function appendNum(num) {
+            playBeep(900, 'sine', 0.04);
+            if (currentAmountStr === "0") {
+                currentAmountStr = num === "00" ? "0" : num;
+            } else {
+                if (currentAmountStr.length < 7) { // Max limit
+                    currentAmountStr += num;
+                }
+            }
+            updateDisplay();
+        }
+
+        function clearAmount() {
+            playBeep(400, 'sine', 0.06);
+            currentAmountStr = "0";
+            updateDisplay();
+        }
+
+        function setAmount(val) {
+            playBeep(800, 'sine', 0.05);
+            currentAmountStr = val;
+            updateDisplay();
+        }
+
+        // Update Screen UI
+        function updateDisplay() {
+            document.getElementById('pos-amount-display').textContent = parseInt(currentAmountStr).toLocaleString('it-IT');
+
+            const payerObj = players.find(p => p.id === payerId);
+            const payeeObj = players.find(p => p.id === payeeId);
+
+            document.getElementById('payer-name').textContent = payerObj ? payerObj.name : '-- Scegli --';
+            document.getElementById('payee-name').textContent = payeeObj ? payeeObj.name : '-- Scegli --';
+
+            // Highlight active box
+            const payerBox = document.getElementById('payer-box');
+            const payeeBox = document.getElementById('payee-box');
+
+            if (selectMode === 'payer') {
+                payerBox.classList.add('border-rose-500', 'bg-rose-950/30');
+                payeeBox.classList.remove('border-emerald-500', 'bg-emerald-950/30');
+                document.getElementById('selection-prompt').textContent = '1. Seleziona Chi PAGA';
+            } else {
+                payeeBox.classList.add('border-emerald-500', 'bg-emerald-950/30');
+                payerBox.classList.remove('border-rose-500', 'bg-rose-950/30');
+                document.getElementById('selection-prompt').textContent = '2. Seleziona Chi RICEVE';
+            }
+
+            // Subtext status
+            const subtext = document.getElementById('pos-subtext');
+            if (payerObj && payeeObj) {
+                subtext.textContent = `${payerObj.name} ➔ ${payeeObj.name}`;
+            } else if (payerObj) {
+                subtext.textContent = `Paga: ${payerObj.name} (Seleziona il destinatario)`;
+            } else {
+                subtext.textContent = `Seleziona i giocatori per la transazione`;
+            }
+        }
+
+        function executeTransaction() {
+            const amount = parseInt(currentAmountStr);
+
+            if (!payerId || !payeeId) {
+                playErrorSound();
+                alert("Seleziona sia CHI PAGA sia CHI RICEVE per eseguire il pagamento!");
+                return;
+            }
+
+            if (payerId === payeeId) {
+                playErrorSound();
+                alert("Il pagatore e il destinatario devono essere diversi!");
+                return;
+            }
+
+            if (amount <= 0) {
+                playErrorSound();
+                alert("Inserisci un importo valido maggiore di 0!");
+                return;
+            }
+
+            const payer = players.find(p => p.id === payerId);
+            const payee = players.find(p => p.id === payeeId);
+
+            // Check sufficient funds if not Bank
+            if (!payer.isBank && payer.balance < amount) {
+                playErrorSound();
+                alert(`Fondi insufficienti per ${payer.name}! Saldo attuale: M ${payer.balance}`);
+                return;
+            }
+
+            // Perform transfer
+            if (!payer.isBank) payer.balance -= amount;
+            if (!payee.isBank) payee.balance += amount;
+
+            // Save to history
+            history.unshift({
+                id: Date.now(),
+                payerId: payer.id,
+                payerName: payer.name,
+                payeeId: payee.id,
+                payeeName: payee.name,
+                amount: amount,
+                time: new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+            });
+
+            playSuccessSound();
+
+            // Reset inputs
+            currentAmountStr = "0";
+            payerId = null;
+            payeeId = null;
+            selectMode = 'payer';
+
+            renderPlayers();
+            renderHistory();
+            updateDisplay();
+        }
+
+        // Quick Pass VIA Shortcut (+200 from Bank)
+        function handleQuickPassVIA() {
+            const bank = players.find(p => p.isBank);
+
+            // Need payee selected or currently selected player
+            let targetId = payeeId || payerId;
+
+            if (!targetId || targetId === bank.id) {
+                playErrorSound();
+                alert("Seleziona il giocatore che ha passato il VIA!");
+                return;
+            }
+
+            const target = players.find(p => p.id === targetId);
+
+            target.balance += 200;
+
+            history.unshift({
+                id: Date.now(),
+                payerId: bank.id,
+                payerName: bank.name,
+                payeeId: target.id,
+                payeeName: target.name,
+                amount: 200,
+                isVia: true,
+                time: new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+            });
+
+            playSuccessSound();
+
+            payerId = null;
+            payeeId = null;
+            selectMode = 'payer';
+
+            renderPlayers();
+            renderHistory();
+            updateDisplay();
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('history-list');
+            const undoBtn = document.getElementById('undo-btn');
+
+            if (history.length === 0) {
+                container.innerHTML = '<div class="text-slate-600 text-center py-2 italic text-[11px]">Nessuna operazione registrata</div>';
+                undoBtn.disabled = true;
+                return;
+            }
+
+            undoBtn.disabled = false;
+            container.innerHTML = '';
+
+            history.slice(0, 10).forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'flex justify-between items-center bg-slate-800/60 p-2 rounded-lg border border-slate-700/50 text-[11px]';
+                
+                const isVia = item.isVia ? '<span class="bg-emerald-500/20 text-emerald-400 font-bold px-1 rounded text-[9px] mr-1">VIA</span>' : '';
+
+                el.innerHTML = `
+                    <div class="truncate max-w-[200px]">
+                        ${isVia}<span class="font-semibold text-slate-300">${item.payerName}</span> ➔ <span class="font-semibold text-slate-300">${item.payeeName}</span>
+                    </div>
+                    <div class="font-display font-bold text-emerald-400 flex items-center gap-2">
+                        +M ${item.amount.toLocaleString('it-IT')}
+                        <span class="text-[9px] font-sans text-slate-500 font-normal">${item.time}</span>
+                    </div>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        function undoLastTransaction() {
+            if (history.length === 0) return;
+
+            const last = history.shift();
+
+            const payer = players.find(p => p.id === last.payerId);
+            const payee = players.find(p => p.id === last.payeeId);
+
+            // Revert balances
+            if (payer && !payer.isBank) payer.balance += last.amount;
+            if (payee && !payee.isBank) payee.balance -= last.amount;
+
+            playBeep(400, 'square', 0.15);
+
+            renderPlayers();
+            renderHistory();
+            updateDisplay();
+        }
+
+        function openSetupModal() {
+            playBeep(700, 'sine', 0.05);
+            const container = document.getElementById('player-inputs-container');
+            container.innerHTML = '';
+
+            // Render inputs for normal players
+            players.filter(p => !p.isBank).forEach((p, idx) => {
+                const row = document.createElement('div');
+                row.className = 'flex items-center gap-2';
+                row.innerHTML = `
+                    <span class="w-3 h-3 rounded-full ${p.color.bg} shrink-0"></span>
+                    <input type="text" value="${p.name}" data-id="${p.id}" class="player-name-input flex-1 bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white font-bold focus:outline-none focus:border-emerald-500">
+                    ${players.filter(x => !x.isBank).length > 2 ? `
+                        <button onclick="removePlayerInput('${p.id}')" class="text-rose-400 hover:text-rose-300 p-1">
+                            <i class="fa-solid fa-trash-can text-sm"></i>
+                        </button>
+                    ` : ''}
+                `;
+                container.appendChild(row);
+            });
+
+            document.getElementById('setup-modal').classList.remove('hidden');
+        }
+
+        function closeSetupModal() {
+            playBeep(500, 'sine', 0.05);
+            document.getElementById('setup-modal').classList.add('hidden');
+        }
+
+        function addNewPlayerInput() {
+            const currentNonBank = players.filter(p => !p.isBank);
+            if (currentNonBank.length >= 6) {
+                alert("Massimo 6 giocatori supportati!");
+                return;
+            }
+
+            const nextIndex = currentNonBank.length;
+            const newId = 'p_' + Date.now();
+            const newColor = COLOR_PRESETS[nextIndex % COLOR_PRESETS.length];
+
+            const initialMoney = parseInt(document.getElementById('initial-money-input').value) || 1500;
+
+            players.splice(players.length - 1, 0, {
+                id: newId,
+                name: `Giocatore ${nextIndex + 1}`,
+                balance: initialMoney,
+                color: newColor
+            });
+
+            openSetupModal();
+        }
+
+        function removePlayerInput(id) {
+            players = players.filter(p => p.id !== id);
+            openSetupModal();
+        }
+
+        function saveSetup() {
+            const inputs = document.querySelectorAll('.player-name-input');
+            inputs.forEach(input => {
+                const pId = input.getAttribute('data-id');
+                const player = players.find(p => p.id === pId);
+                if (player && input.value.trim() !== '') {
+                    player.name = input.value.trim();
+                }
+            });
+
+            const initialMoney = parseInt(document.getElementById('initial-money-input').value) || 1500;
+
+            // Reset balances if requested or updated
+            players.forEach(p => {
+                if (!p.isBank) {
+                    p.balance = initialMoney;
+                }
+            });
+
+            history = [];
+            payerId = null;
+            payeeId = null;
+
+            renderPlayers();
+            renderHistory();
+            updateDisplay();
+            closeSetupModal();
+            playSuccessSound();
+        }
+
+        function resetGame() {
+            if (confirm("Vuoi iniziare una nuova partita? Tutti i saldi e lo storico verranno azzerati.")) {
+                loadDefaultPlayers();
+                history = [];
+                payerId = null;
+                payeeId = null;
+                currentAmountStr = "0";
+                renderPlayers();
+                renderHistory();
+                updateDisplay();
+                closeSetupModal();
+                playSuccessSound();
+            }
+        }
+    </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Monopoly POS Bancomat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        display: ['Orbitron', 'sans-serif'],
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        mono: {
+                            red: '#e63946',
+                            green: '#2a9d8f',
+                            blue: '#1d3557',
+                            gold: '#ffb703',
+                            bg: '#0f172a',
+                            card: '#1e293b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        .pos-screen-glow {
+            box-shadow: inset 0 0 15px rgba(0, 255, 170, 0.15);
+        }
+        .btn-press:active {
+            transform: scale(0.95);
+        }
+        /* Custom scrollbar for transaction history */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-mono-bg text-slate-100 font-sans min-h-screen flex flex-col justify-between overflow-x-hidden select-none">
+
+    <header class="bg-slate-900 border-b border-slate-800 p-3 px-4 flex justify-between items-center sticky top-0 z-30 shadow-lg">
+        <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center shadow-md shadow-emerald-500/20">
+                <i class="fa-solid font-bold text-slate-950 text-lg">M</i>
+            </div>
+            <div>
+                <h1 class="font-display font-black text-lg tracking-wider text-white leading-none">MONOPOLY</h1>
+                <p class="text-[10px] tracking-widest text-emerald-400 font-semibold uppercase">Super Bank POS</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button onclick="openSetupModal()" class="btn-press bg-slate-800 hover:bg-slate-700 text-slate-300 p-2 rounded-lg text-sm flex items-center gap-1.5 border border-slate-700">
+                <i class="fa-solid fa-users-gear text-emerald-400"></i>
+                <span class="text-xs font-semibold">Giocatori</span>
+            </button>
+            <button onclick="toggleAudio()" id="audio-toggle-btn" class="btn-press bg-slate-800 text-emerald-400 p-2 rounded-lg text-sm border border-slate-700">
+                <i class="fa-solid fa-volume-high"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-md w-full mx-auto p-3 flex flex-col gap-3 justify-between">
+
+        <!-- Top Display Screen -->
+        <section class="bg-slate-900 rounded-2xl p-4 border-2 border-slate-700/80 pos-screen-glow relative overflow-hidden shadow-2xl">
+            <div class="flex justify-between items-center text-xs text-slate-400 font-mono mb-1">
+                <span id="pos-status-text" class="text-emerald-400 font-bold tracking-wider flex items-center gap-1">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> PRONTO
+                </span>
+                <span id="pos-clock">00:00</span>
+            </div>
+
+            <!-- Transaction Display -->
+            <div class="text-right my-2">
+                <div id="pos-subtext" class="text-xs text-slate-400 min-h-[16px] truncate">Seleziona Pagatore</div>
+                <div class="flex items-baseline justify-end gap-1 my-1">
+                    <span class="text-xl font-bold text-emerald-400 font-display">M</span>
+                    <span id="pos-amount-display" class="font-display text-4xl font-extrabold tracking-tight text-white">0</span>
+                </div>
+            </div>
+
+            <!-- Transaction Flow Visualizer -->
+            <div class="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-800">
+                <div id="payer-box" onclick="setSelectMode('payer')" class="bg-slate-800/80 p-2.5 rounded-xl border border-slate-700 text-left transition-all cursor-pointer hover:border-slate-500">
+                    <div class="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Chi Paga</div>
+                    <div id="payer-name" class="font-bold text-sm text-slate-200 truncate mt-0.5">-- Scegli --</div>
+                </div>
+                <div id="payee-box" onclick="setSelectMode('payee')" class="bg-slate-800/80 p-2.5 rounded-xl border border-slate-700 text-left transition-all cursor-pointer hover:border-slate-500">
+                    <div class="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Chi Riceve</div>
+                    <div id="payee-name" class="font-bold text-sm text-slate-200 truncate mt-0.5">-- Scegli --</div>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <div class="flex justify-between items-center mb-1.5 px-1">
+                <span id="selection-prompt" class="text-xs font-bold text-slate-300 uppercase tracking-wider">1. Seleziona Giocatore</span>
+                <span class="text-[10px] text-slate-500">Tocca la tessera</span>
+            </div>
+            <div id="players-grid" class="grid grid-cols-2 gap-2">
+                <!-- Players inserted dynamically -->
+            </div>
+        </section>
+
+        <section class="bg-slate-900 rounded-2xl p-3 border border-slate-800 shadow-xl">
+            <!-- Quick Shortcuts Bar -->
+            <div class="grid grid-cols-3 gap-2 mb-2">
+                <button onclick="handleQuickPassVIA()" class="btn-press bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/60 font-bold p-2.5 rounded-xl text-xs flex flex-col items-center justify-center gap-1 shadow-md">
+                    <i class="fa-solid fa-flag-checkered text-emerald-400 text-sm"></i>
+                    <span>+200 VIA</span>
+                </button>
+                <button onclick="setAmount('100')" class="btn-press bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold p-2.5 rounded-xl text-xs">
+                    M 100
+                </button>
+                <button onclick="setAmount('500')" class="btn-press bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold p-2.5 rounded-xl text-xs">
+                    M 500
+                </button>
+            </div>
+
+            <!-- Numpad -->
+            <div class="grid grid-cols-3 gap-2 font-display text-lg">
+                <button onclick="appendNum('1')" class="btn-press bg-slate-800 hover:bg-slate-700 text-white font-bold p-3 rounded-xl border border-slate-700/60 shadow">1</button>
+                <button onclick="appendNum('2')" class="btn-press bg-slate-800 hover:bg-slate-700 text-white font-bold p-3 rounded-xl border border-slate-700/60 shadow">2</button>
+                <button onclick="appendNum('3')" class="btn-press bg-slate-800 hover:bg-slate-700 text-white font-bold p-3 rounded-xl border border-slate-700/60 shadow">3</button>
+                
+                <button onclick="appendNum('4')" class="btn-press bg-slate-800 hover:bg-slate-700 text-white font-bold p-3 rounded-xl border border-slate-700/60 shadow">4</button>
+                <button onclick="appendNum('5')" class="btn-press bg-slate-800 hover:bg-slate-700 text-white font-bold p-3 rounded-xl border border-slate-700/60 shadow">5</button>
+                <button onclick="appendNum('6')" class="btn-press bg-slate-800 hover:bg-slate-700 text-white font-bold p-3 rounded-xl border border-slate-700/60 shadow">6</button>
+                
+                <button onclick="appendNum('7')" class="btn-press bg-slate-800 hover:bg-slate-700 text-white font-bold p-3 rounded-xl border border-slate-700/60 shadow">7</button>
+                <button onclick="appendNum('8')" class="btn-press bg-slate-800 hover:bg-slate-700 text-white font-bold p-3 rounded-xl border border-slate-700/60 shadow">8</button>
+                <button onclick="appendNum('9')" class="btn-press bg-slate-800 hover:bg-slate-700 text-white font-bold p-3 rounded-xl border border-slate-700/60 shadow">9</button>
+                
+                <button onclick="clearAmount()" class="btn-press bg-rose-950/60 hover:bg-rose-900 text-rose-300 font-bold p-3 rounded-xl border border-rose-800/50 text-sm flex items-center justify-center">
+                    C
+                </button>
+                <button onclick="appendNum('0')" class="btn-press bg-slate-800 hover:bg-slate-700 text-white font-bold p-3 rounded-xl border border-slate-700/60 shadow">0</button>
+                <button onclick="appendNum('00')" class="btn-press bg-slate-800 hover:bg-slate-700 text-white font-bold p-3 rounded-xl border border-slate-700/60 shadow text-base">00</button>
+            </div>
+
+            <!-- Execute Transaction Button -->
+            <button onclick="executeTransaction()" class="btn-press w-full mt-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black p-3.5 rounded-xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 text-base uppercase tracking-wider">
+                <i class="fa-solid fa-credit-card text-lg"></i> CONFERMA PAGAMENTO
+            </button>
+        </section>
+
+        <section class="bg-slate-900/90 rounded-xl p-3 border border-slate-800">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="fa-solid fa-clock-rotate-left text-slate-500"></i> Storico Movimenti
+                </span>
+                <button onclick="undoLastTransaction()" id="undo-btn" class="btn-press text-[11px] text-amber-400 hover:text-amber-300 font-semibold disabled:opacity-30 disabled:pointer-events-none flex items-center gap-1 bg-amber-950/40 px-2 py-1 rounded border border-amber-800/40" disabled>
+                    <i class="fa-solid fa-rotate-left"></i> Annulla Ultima
+                </button>
+            </div>
+            <div id="history-list" class="max-h-28 overflow-y-auto space-y-1.5 pr-1 text-xs">
+                <div class="text-slate-600 text-center py-2 italic text-[11px]">Nessuna operazione registrata</div>
+            </div>
+        </section>
+
+    </main>
+
+    <div id="setup-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-5 shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+                <h2 class="text-lg font-bold font-display text-white flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-emerald-400"></i> Impostazioni Partita
+                </h2>
+                <button onclick="closeSetupModal()" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="py-4 overflow-y-auto space-y-4 flex-1">
+                <!-- Initial Money Setting -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1.5">Saldo Iniziale Giocatori (M)</label>
+                    <input type="number" id="initial-money-input" value="1500" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white font-bold font-display focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <!-- Players List Configuration -->
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="text-xs font-bold text-slate-400 uppercase">Giocatori in Gioco</label>
+                        <button onclick="addNewPlayerInput()" class="text-xs text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1">
+                            <i class="fa-solid fa-plus"></i> Aggiungi
+                        </button>
+                    </div>
+                    <div id="player-inputs-container" class="space-y-2">
+                        <!-- Inputs inserted by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 flex gap-2">
+                <button onclick="resetGame()" class="btn-press bg-rose-950 hover:bg-rose-900 text-rose-300 font-bold px-4 py-3 rounded-xl text-xs border border-rose-800/60">
+                    Nuova Partita
+                </button>
+                <button onclick="saveSetup()" class="btn-press flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 rounded-xl text-xs uppercase tracking-wider">
+                    Salva e Salva Saldi
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Player Colors Presets
+        const COLOR_PRESETS = [
+            { name: 'Rosso', bg: 'bg-red-600', text: 'text-red-400', border: 'border-red-500', hex: '#ef4444' },
+            { name: 'Blu', bg: 'bg-blue-600', text: 'text-blue-400', border: 'border-blue-500', hex: '#3b82f6' },
+            { name: 'Verde', bg: 'bg-emerald-600', text: 'text-emerald-400', border: 'border-emerald-500', hex: '#10b981' },
+            { name: 'Giallo', bg: 'bg-amber-500', text: 'text-amber-400', border: 'border-amber-500', hex: '#f59e0b' },
+            { name: 'Viola', bg: 'bg-purple-600', text: 'text-purple-400', border: 'border-purple-500', hex: '#a855f7' },
+            { name: 'Arancio', bg: 'bg-orange-500', text: 'text-orange-400', border: 'border-orange-500', hex: '#f97316' },
+        ];
+
+        // Bank special entity
+        const BANK_ENTITY = { id: 'BANK', name: 'BANCA', color: { bg: 'bg-slate-700', text: 'text-slate-300', border: 'border-slate-600', hex: '#64748b' } };
+
+        // Global State Variables
+        let players = [];
+        let payerId = null;
+        let payeeId = null;
+        let currentAmountStr = "0";
+        let selectMode = 'payer'; // 'payer' or 'payee'
+        let history = [];
+        let audioEnabled = true;
+
+        // Web Audio API Context
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        // Synth Sound FX Generators
+        function playBeep(freq = 800, type = 'sine', duration = 0.08) {
+            if (!audioEnabled) return;
+            try {
+                initAudio();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) {
+                console.log("Audio not allowed yet");
+            }
+        }
+
+        function playSuccessSound() {
+            if (!audioEnabled) return;
+            playBeep(523.25, 'triangle', 0.08); // C5
+            setTimeout(() => playBeep(659.25, 'triangle', 0.08), 80); // E5
+            setTimeout(() => playBeep(783.99, 'triangle', 0.15), 160); // G5
+        }
+
+        function playErrorSound() {
+            if (!audioEnabled) return;
+            playBeep(220, 'sawtooth', 0.12);
+            setTimeout(() => playBeep(180, 'sawtooth', 0.2), 100);
+        }
+
+        function toggleAudio() {
+            audioEnabled = !audioEnabled;
+            const btn = document.getElementById('audio-toggle-btn');
+            if (audioEnabled) {
+                btn.classList.replace('text-slate-500', 'text-emerald-400');
+                playBeep(1000, 'sine', 0.05);
+            } else {
+                btn.classList.replace('text-emerald-400', 'text-slate-500');
+            }
+        }
+
+        // Clock display
+        function updateClock() {
+            const now = new Date();
+            const hrs = String(now.getHours()).padStart(2, '0');
+            const mins = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('pos-clock').textContent = `${hrs}:${mins}`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        window.onload = function() {
+            loadDefaultPlayers();
+            renderPlayers();
+            updateDisplay();
+        };
+
+        function loadDefaultPlayers() {
+            players = [
+                { id: 'p1', name: 'Giocatore 1', balance: 1500, color: COLOR_PRESETS[0] },
+                { id: 'p2', name: 'Giocatore 2', balance: 1500, color: COLOR_PRESETS[1] },
+                { id: 'p3', name: 'Giocatore 3', balance: 1500, color: COLOR_PRESETS[2] },
+                { id: 'p4', name: 'Banca', balance: 999999, isBank: true, color: BANK_ENTITY.color }
+            ];
+        }
+
+        // Render Player Selection Grid
+        function renderPlayers() {
+            const grid = document.getElementById('players-grid');
+            grid.innerHTML = '';
+
+            players.forEach(p => {
+                const isPayer = p.id === payerId;
+                const isPayee = p.id === payeeId;
+
+                let stateClasses = 'bg-slate-900/90 border-slate-800 text-slate-300';
+                if (isPayer) {
+                    stateClasses = 'bg-rose-950/60 border-rose-500 text-rose-200 ring-2 ring-rose-500/50';
+                } else if (isPayee) {
+                    stateClasses = 'bg-emerald-950/60 border-emerald-500 text-emerald-200 ring-2 ring-emerald-500/50';
+                }
+
+                const card = document.createElement('div');
+                card.className = `btn-press p-3 rounded-xl border flex flex-col justify-between cursor-pointer transition-all ${stateClasses}`;
+                card.onclick = () => selectPlayer(p.id);
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-1.5 min-w-0">
+                            <span class="w-2.5 h-2.5 rounded-full ${p.color.bg} shrink-0"></span>
+                            <span class="font-bold text-xs truncate">${p.name}</span>
+                        </div>
+                        ${isPayer ? '<span class="text-[9px] bg-rose-500/20 text-rose-300 px-1.5 py-0.5 rounded font-black uppercase">Paga</span>' : ''}
+                        ${isPayee ? '<span class="text-[9px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded font-black uppercase">Riceve</span>' : ''}
+                    </div>
+                    <div class="mt-2 text-right">
+                        <span class="text-[10px] text-slate-500 font-mono">SALDO</span>
+                        <div class="font-display font-black text-sm ${p.isBank ? 'text-slate-400' : 'text-white'}">
+                            ${p.isBank ? '∞' : 'M ' + p.balance.toLocaleString('it-IT')}
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Player Selection Logic
+        function selectPlayer(id) {
+            playBeep(600, 'sine', 0.05);
+
+            if (selectMode === 'payer') {
+                if (payeeId === id) payeeId = null; // Can't be both
+                payerId = (payerId === id) ? null : id;
+                selectMode = 'payee'; // Auto advance to next step
+            } else {
+                if (payerId === id) payerId = null; // Can't be both
+                payeeId = (payeeId === id) ? null : id;
+            }
+
+            renderPlayers();
+            updateDisplay();
+        }
+
+        function setSelectMode(mode) {
+            playBeep(700, 'sine', 0.04);
+            selectMode = mode;
+            updateDisplay();
+        }
+
+        // Numpad Logic
+        function appendNum(num) {
+            playBeep(900, 'sine', 0.04);
+            if (currentAmountStr === "0") {
+                currentAmountStr = num === "00" ? "0" : num;
+            } else {
+                if (currentAmountStr.length < 7) { // Max limit
+                    currentAmountStr += num;
+                }
+            }
+            updateDisplay();
+        }
+
+        function clearAmount() {
+            playBeep(400, 'sine', 0.06);
+            currentAmountStr = "0";
+            updateDisplay();
+        }
+
+        function setAmount(val) {
+            playBeep(800, 'sine', 0.05);
+            currentAmountStr = val;
+            updateDisplay();
+        }
+
+        // Update Screen UI
+        function updateDisplay() {
+            document.getElementById('pos-amount-display').textContent = parseInt(currentAmountStr).toLocaleString('it-IT');
+
+            const payerObj = players.find(p => p.id === payerId);
+            const payeeObj = players.find(p => p.id === payeeId);
+
+            document.getElementById('payer-name').textContent = payerObj ? payerObj.name : '-- Scegli --';
+            document.getElementById('payee-name').textContent = payeeObj ? payeeObj.name : '-- Scegli --';
+
+            // Highlight active box
+            const payerBox = document.getElementById('payer-box');
+            const payeeBox = document.getElementById('payee-box');
+
+            if (selectMode === 'payer') {
+                payerBox.classList.add('border-rose-500', 'bg-rose-950/30');
+                payeeBox.classList.remove('border-emerald-500', 'bg-emerald-950/30');
+                document.getElementById('selection-prompt').textContent = '1. Seleziona Chi PAGA';
+            } else {
+                payeeBox.classList.add('border-emerald-500', 'bg-emerald-950/30');
+                payerBox.classList.remove('border-rose-500', 'bg-rose-950/30');
+                document.getElementById('selection-prompt').textContent = '2. Seleziona Chi RICEVE';
+            }
+
+            // Subtext status
+            const subtext = document.getElementById('pos-subtext');
+            if (payerObj && payeeObj) {
+                subtext.textContent = `${payerObj.name} ➔ ${payeeObj.name}`;
+            } else if (payerObj) {
+                subtext.textContent = `Paga: ${payerObj.name} (Seleziona il destinatario)`;
+            } else {
+                subtext.textContent = `Seleziona i giocatori per la transazione`;
+            }
+        }
+
+        function executeTransaction() {
+            const amount = parseInt(currentAmountStr);
+
+            if (!payerId || !payeeId) {
+                playErrorSound();
+                alert("Seleziona sia CHI PAGA sia CHI RICEVE per eseguire il pagamento!");
+                return;
+            }
+
+            if (payerId === payeeId) {
+                playErrorSound();
+                alert("Il pagatore e il destinatario devono essere diversi!");
+                return;
+            }
+
+            if (amount <= 0) {
+                playErrorSound();
+                alert("Inserisci un importo valido maggiore di 0!");
+                return;
+            }
+
+            const payer = players.find(p => p.id === payerId);
+            const payee = players.find(p => p.id === payeeId);
+
+            // Check sufficient funds if not Bank
+            if (!payer.isBank && payer.balance < amount) {
+                playErrorSound();
+                alert(`Fondi insufficienti per ${payer.name}! Saldo attuale: M ${payer.balance}`);
+                return;
+            }
+
+            // Perform transfer
+            if (!payer.isBank) payer.balance -= amount;
+            if (!payee.isBank) payee.balance += amount;
+
+            // Save to history
+            history.unshift({
+                id: Date.now(),
+                payerId: payer.id,
+                payerName: payer.name,
+                payeeId: payee.id,
+                payeeName: payee.name,
+                amount: amount,
+                time: new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+            });
+
+            playSuccessSound();
+
+            // Reset inputs
+            currentAmountStr = "0";
+            payerId = null;
+            payeeId = null;
+            selectMode = 'payer';
+
+            renderPlayers();
+            renderHistory();
+            updateDisplay();
+        }
+
+        // Quick Pass VIA Shortcut (+200 from Bank)
+        function handleQuickPassVIA() {
+            const bank = players.find(p => p.isBank);
+
+            // Need payee selected or currently selected player
+            let targetId = payeeId || payerId;
+
+            if (!targetId || targetId === bank.id) {
+                playErrorSound();
+                alert("Seleziona il giocatore che ha passato il VIA!");
+                return;
+            }
+
+            const target = players.find(p => p.id === targetId);
+
+            target.balance += 200;
+
+            history.unshift({
+                id: Date.now(),
+                payerId: bank.id,
+                payerName: bank.name,
+                payeeId: target.id,
+                payeeName: target.name,
+                amount: 200,
+                isVia: true,
+                time: new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+            });
+
+            playSuccessSound();
+
+            payerId = null;
+            payeeId = null;
+            selectMode = 'payer';
+
+            renderPlayers();
+            renderHistory();
+            updateDisplay();
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('history-list');
+            const undoBtn = document.getElementById('undo-btn');
+
+            if (history.length === 0) {
+                container.innerHTML = '<div class="text-slate-600 text-center py-2 italic text-[11px]">Nessuna operazione registrata</div>';
+                undoBtn.disabled = true;
+                return;
+            }
+
+            undoBtn.disabled = false;
+            container.innerHTML = '';
+
+            history.slice(0, 10).forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'flex justify-between items-center bg-slate-800/60 p-2 rounded-lg border border-slate-700/50 text-[11px]';
+                
+                const isVia = item.isVia ? '<span class="bg-emerald-500/20 text-emerald-400 font-bold px-1 rounded text-[9px] mr-1">VIA</span>' : '';
+
+                el.innerHTML = `
+                    <div class="truncate max-w-[200px]">
+                        ${isVia}<span class="font-semibold text-slate-300">${item.payerName}</span> ➔ <span class="font-semibold text-slate-300">${item.payeeName}</span>
+                    </div>
+                    <div class="font-display font-bold text-emerald-400 flex items-center gap-2">
+                        +M ${item.amount.toLocaleString('it-IT')}
+                        <span class="text-[9px] font-sans text-slate-500 font-normal">${item.time}</span>
+                    </div>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        function undoLastTransaction() {
+            if (history.length === 0) return;
+
+            const last = history.shift();
+
+            const payer = players.find(p => p.id === last.payerId);
+            const payee = players.find(p => p.id === last.payeeId);
+
+            // Revert balances
+            if (payer && !payer.isBank) payer.balance += last.amount;
+            if (payee && !payee.isBank) payee.balance -= last.amount;
+
+            playBeep(400, 'square', 0.15);
+
+            renderPlayers();
+            renderHistory();
+            updateDisplay();
+        }
+
+        function openSetupModal() {
+            playBeep(700, 'sine', 0.05);
+            const container = document.getElementById('player-inputs-container');
+            container.innerHTML = '';
+
+            // Render inputs for normal players
+            players.filter(p => !p.isBank).forEach((p, idx) => {
+                const row = document.createElement('div');
+                row.className = 'flex items-center gap-2';
+                row.innerHTML = `
+                    <span class="w-3 h-3 rounded-full ${p.color.bg} shrink-0"></span>
+                    <input type="text" value="${p.name}" data-id="${p.id}" class="player-name-input flex-1 bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white font-bold focus:outline-none focus:border-emerald-500">
+                    ${players.filter(x => !x.isBank).length > 2 ? `
+                        <button onclick="removePlayerInput('${p.id}')" class="text-rose-400 hover:text-rose-300 p-1">
+                            <i class="fa-solid fa-trash-can text-sm"></i>
+                        </button>
+                    ` : ''}
+                `;
+                container.appendChild(row);
+            });
+
+            document.getElementById('setup-modal').classList.remove('hidden');
+        }
+
+        function closeSetupModal() {
+            playBeep(500, 'sine', 0.05);
+            document.getElementById('setup-modal').classList.add('hidden');
+        }
+
+        function addNewPlayerInput() {
+            const currentNonBank = players.filter(p => !p.isBank);
+            if (currentNonBank.length >= 6) {
+                alert("Massimo 6 giocatori supportati!");
+                return;
+            }
+
+            const nextIndex = currentNonBank.length;
+            const newId = 'p_' + Date.now();
+            const newColor = COLOR_PRESETS[nextIndex % COLOR_PRESETS.length];
+
+            const initialMoney = parseInt(document.getElementById('initial-money-input').value) || 1500;
+
+            players.splice(players.length - 1, 0, {
+                id: newId,
+                name: `Giocatore ${nextIndex + 1}`,
+                balance: initialMoney,
+                color: newColor
+            });
+
+            openSetupModal();
+        }
+
+        function removePlayerInput(id) {
+            players = players.filter(p => p.id !== id);
+            openSetupModal();
+        }
+
+        function saveSetup() {
+            const inputs = document.querySelectorAll('.player-name-input');
+            inputs.forEach(input => {
+                const pId = input.getAttribute('data-id');
+                const player = players.find(p => p.id === pId);
+                if (player && input.value.trim() !== '') {
+                    player.name = input.value.trim();
+                }
+            });
+
+            const initialMoney = parseInt(document.getElementById('initial-money-input').value) || 1500;
+
+            // Reset balances if requested or updated
+            players.forEach(p => {
+                if (!p.isBank) {
+                    p.balance = initialMoney;
+                }
+            });
+
+            history = [];
+            payerId = null;
+            payeeId = null;
+
+            renderPlayers();
+            renderHistory();
+            updateDisplay();
+            closeSetupModal();
+            playSuccessSound();
+        }
+
+        function resetGame() {
+            if (confirm("Vuoi iniziare una nuova partita? Tutti i saldi e lo storico verranno azzerati.")) {
+                loadDefaultPlayers();
+                history = [];
+                payerId = null;
+                payeeId = null;
+                currentAmountStr = "0";
+                renderPlayers();
+                renderHistory();
+                updateDisplay();
+                closeSetupModal();
+                playSuccessSound();
+            }
+        }
+    </script>
+</body>
+</html>
